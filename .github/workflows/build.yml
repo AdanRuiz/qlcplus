@@ -1,10 +1,14 @@
 name: QLCplus Github Actions CI Build
 
-on: ["push", "pull_request"]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
+# Forks (anything other than mcallegari/qlcplus) build only Windows for development.
 jobs:
   build-linux:
-    #if: false
+    if: github.repository == 'mcallegari/qlcplus'
     runs-on: ubuntu-22.04
     name: QLCplus Linux ${{matrix.task}}
     strategy:
@@ -461,6 +465,7 @@ jobs:
           path: ${{matrix.task}}-${{env.OUTFILE}}
 
   build-macos:
+    if: github.repository == 'mcallegari/qlcplus'
     runs-on: macos-15
     name: QLCplus macOS ${{matrix.task}}
     strategy:
