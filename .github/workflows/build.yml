@@ -264,7 +264,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [build-v4, build-v5]
+        # Forks build only QLC+ 5 (the VertexAV plugin targets QLC+ 5.3.0).
+        task: ${{ fromJSON(github.repository == 'mcallegari/qlcplus' && '["build-v4","build-v5"]' || '["build-v5"]') }}
     env:
       CI_REPO_SLUG: ${{ github.repository }}
       CI_BRANCH: ${{ github.head_ref }}
@@ -453,6 +454,15 @@ jobs:
         with:
           name: QLC+-${{matrix.task}}-${{env.APPVERSION}}-${{env.BUILD_DATE}}-${{env.GIT_REV}}.exe
           path: ${{matrix.task}}-${{env.OUTFILE}}
+
+      # The plugin alone, to copy into the Plugins folder of an official QLC+ of the same version.
+      - name: Store VertexAV plugin artifact
+        if: ${{ matrix.task == 'build-v5' && github.repository != 'mcallegari/qlcplus' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: vertexavplugin-${{env.APPVERSION}}-${{env.GIT_REV}}-windows-x64
+          path: C:/qlcplus/plugins/vertexavplugin.dll
+          if-no-files-found: error
 
   build-macos:
     if: github.repository == 'mcallegari/qlcplus'
