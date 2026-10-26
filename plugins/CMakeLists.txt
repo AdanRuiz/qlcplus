@@ -10,6 +10,7 @@ add_subdirectory(E1.31)
 add_subdirectory(loopback)
 add_subdirectory(osc)
 add_subdirectory(os2l)
+add_subdirectory(vertexav)
 
 if(NOT ANDROID AND NOT IOS)
     # libusb-1.0
