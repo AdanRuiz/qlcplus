@@ -45,6 +45,10 @@ La capa Accent es un golpe, no un estado: cuando la música lo permite (canal «
 
 Como acento solo se usan las escenas de strobe de los grupos con canal de shutter y el «Blinder Hit» de los grupos con rol Blinder. Un rig sin ninguno de los dos no tiene acentos.
 
+### Barras motorizadas (tilt sin pan)
+
+El wizard solo genera movimiento para equipos con canal de pan. A los equipos que tienen tilt pero no pan, como una barra de píxeles motorizada, el Director les crea un chaser «<grupo> - Tilt sweep»: un barrido lento entre los valores 72 y 184 del canal de tilt. Corre en la capa Movement junto a lo que hagan las cabezas móviles, o solo si no las hay, y descansa en la regla de silencio.
+
 ## Colores
 
 El Director crea tres paletas de color: «Director - Primary», «Director - Secondary» y «Director - Accent». Los tres primeros colores que envía VertexAV se escriben en ellas al empezar el compás, y la capa Base se reinicia para tomarlos. Un color negro se interpreta como «sin usar» y no cambia la paleta.
@@ -85,7 +89,15 @@ Todo se ejecuta con `qmlui/director/test/run-tests.sh` dentro de un contenedor L
 | `director_e2e` | La aplicación real sin pantalla: parchea 4 pares y 4 cabezas móviles, ejecuta el Show Wizard real, arranca la demostración y comprueba que el Director corre funciones del wizard y que el panel se carga en la vista principal |
 | `directorpanel_preview` | Carga el panel con un Director en marcha, falla si hay avisos de QML y guarda una captura |
 
-No se ha probado: la interfaz a mano con ratón, la página de resumen del wizard en pantalla, Windows ni macOS, ni una sesión con el emisor VertexAV real.
+`director_e2e` acepta además `DIRECTOR_E2E_BAR_DEF` (ruta de un `.qxf` de una barra motorizada, para comprobar el barrido de tilt), `DIRECTOR_E2E_RIG=bars` (parchear solo esas barras) y `DIRECTOR_E2E_SAVE` (guardar el proyecto generado).
+
+En Windows se probó con la compilación de CI del fork (`5418f4f`): el wizard y el panel a mano, la demostración en las vistas 2D y 3D, y una sesión de una hora con el emisor VertexAV real (Mixxx), en la que el Director recibió beats, BPM, sección e intensidad y cambió de look en el compás. El barrido de tilt se comprobó en la vista DMX con la definición del SteelPro 1030.
+
+No se ha probado: macOS, la salida DMX con equipos conectados, ni una canción que el emisor divida en varias secciones.
+
+### Traza
+
+Si la variable de entorno `QLCPLUS_DIRECTOR_LOG` contiene la ruta de un archivo, el Director escribe en él cada conexión y pérdida de la entrada, los cambios de sección e intensidad, un resumen cada 16 beats y cada look que arranca. Sirve para verificar una sesión sin mirar la pantalla.
 
 ## Cambio en el Show Wizard
 
