@@ -452,7 +452,7 @@ jobs:
       - name: Store executable artifact
         uses: actions/upload-artifact@v7
         with:
-          name: QLC+-${{matrix.task}}-${{env.APPVERSION}}-${{env.BUILD_DATE}}-${{env.GIT_REV}}.exe
+          name: ${{ matrix.task == 'build-v5' && 'VertexAV-Director' || 'QLC+' }}-${{matrix.task}}-${{env.APPVERSION}}-${{env.BUILD_DATE}}-${{env.GIT_REV}}.exe
           path: ${{matrix.task}}-${{env.OUTFILE}}
 
       # The plugin alone, to copy into the Plugins folder of an official QLC+ of the same version.

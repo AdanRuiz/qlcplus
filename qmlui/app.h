@@ -66,6 +66,7 @@ class App final : public QQuickView
     Q_PROPERTY(int runningFunctionsCount READ runningFunctionsCount NOTIFY runningFunctionsCountChanged)
 
     Q_PROPERTY(QString appName READ appName CONSTANT)
+    Q_PROPERTY(QString engineName READ engineName CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
     Q_PROPERTY(bool is3DSupported READ is3DSupported CONSTANT)
     Q_PROPERTY(qreal screenDiagonal READ screenDiagonal NOTIFY screenDiagonalChanged)
@@ -76,6 +77,9 @@ public:
     ~App();
 
     QString appName() const;
+
+    /** Name of the engine this application is built on */
+    QString engineName() const;
     QString appVersion() const;
 
     enum MouseEvents

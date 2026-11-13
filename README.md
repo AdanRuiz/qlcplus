@@ -1,3 +1,22 @@
+<h1 align="center">VertexAV Director</h1>
+<p align="center">
+  <strong>Lighting that follows the music on its own, and a show that works in any venue.</strong><br/>
+  Based on the <a href="https://www.qlcplus.org/">Q Light Controller Plus (QLC+)</a> engine.
+</p>
+
+VertexAV Director describes a stage in terms of roles (front wash, moving heads, bars, strobes...) and then runs the show by itself, deciding scene, colour and movement from what the music is doing. The same show is reused in another venue by describing that venue, not by programming it again.
+
+- Guide: [docs/director.md](docs/director.md)
+- Plan: [docs/PLAN-venues-director.md](docs/PLAN-venues-director.md)
+
+### Built on QLC+
+
+VertexAV Director is a derivative work of [QLC+](https://github.com/mcallegari/qlcplus), by Massimo Callegari, Heikki Junnila and contributors, and is distributed under the same [Apache 2.0 license](COPYING). Fixture definitions, DMX output, plugins, functions, the 3D view and the workspace format (`.qxw`) all come from QLC+ and stay compatible with it. It is not an official QLC+ release and is not endorsed by the QLC+ project; see [NOTICE](NOTICE) for what was changed.
+
+The rest of this page is the README of the engine, kept as it is upstream.
+
+---
+
 <p align="center">
   <a href="https://www.qlcplus.org/">
     <img src="resources/icons/png/qlcplus.png" alt="QLC+ Logo" height="60" />

@@ -10,7 +10,9 @@ set(CMAKE_AUTORCC ON)
 
 add_definitions(-DUNICODE)
 
-set(APPNAME "Q Light Controller Plus")
+# The engine keeps its own name: it is what the product is built on, and it
+# is credited as such in the About box, the installer and the README.
+set(ENGINENAME "Q Light Controller Plus")
 set(FXEDNAME "Fixture Definition Editor")
 
 if(ANDROID OR IOS)
@@ -46,10 +48,12 @@ endif()
 # deliberately left unsuffixed, since they are shared between the two.
 if(qmlui)
     add_definitions(-DQMLUI)
+    set(APPNAME "VertexAV Director")
     set(APPVERSION "5.3.0")
     set(APPBINARY "qlcplus5")
     set(PLUGINSUBDIR "qlcplus5")
 else()
+    set(APPNAME "${ENGINENAME}")
     set(APPVERSION "4.14.5")
     set(APPBINARY "qlcplus")
     set(PLUGINSUBDIR "qlcplus")

@@ -159,6 +159,11 @@ QString App::appName() const
     return QString(APPNAME);
 }
 
+QString App::engineName() const
+{
+    return QString(ENGINENAME);
+}
+
 QString App::appVersion() const
 {
     return QString(APPVERSION);

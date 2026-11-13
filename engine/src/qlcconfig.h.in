@@ -2,6 +2,7 @@
 #define QLCCONFIG_H
 
 #define APPNAME "${APPNAME}"
+#define ENGINENAME "${ENGINENAME}"
 #define FXEDNAME "${FXEDNAME}"
 #define APPVERSION "${APPVERSION}"
 #define DOCSDIR "${INSTALLROOT}/${DOCSDIR}"

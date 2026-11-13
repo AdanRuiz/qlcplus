@@ -1,0 +1,24 @@
+VertexAV Director
+Copyright (c) 2026 Adan Ruiz
+
+This product is based on Q Light Controller Plus (QLC+)
+https://www.qlcplus.org - https://github.com/mcallegari/qlcplus
+Copyright (c) Heikki Junnila
+Copyright (c) Massimo Callegari and contributors
+Licensed under the Apache License, Version 2.0 (see COPYING).
+
+VertexAV Director is not an official QLC+ release and is not endorsed by
+the QLC+ project. "QLC+" and "Q Light Controller Plus" are used here only
+to name the software this product is derived from.
+
+Changes made to QLC+ in this distribution:
+
+- qmlui/director: the Director, which runs a show on its own following
+  the music.
+- qmlui/stagewizard: roles and the functions the Director works with.
+- 3D view: a default rock stage.
+- Fixture definitions added under resources/fixtures.
+- Application name, settings location, Windows installer and file
+  association identifiers, so that it installs next to QLC+.
+
+Files taken from QLC+ keep their original copyright headers.

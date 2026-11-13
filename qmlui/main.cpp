@@ -39,6 +39,7 @@ void printVersion()
 
     cout << Qt::endl;
     cout << APPNAME << " " << "version " << APPVERSION << Qt::endl;
+    cout << "Based on the " << ENGINENAME << " engine (https://www.qlcplus.org)" << Qt::endl;
     cout << "This program is licensed under the terms of the ";
     cout << "Apache 2.0 license." << Qt::endl;
     cout << "Copyright (c) Heikki Junnila (hjunnila@users.sf.net)" << Qt::endl;
@@ -55,15 +56,16 @@ int main(int argc, char *argv[])
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     qputenv("QT3D_RENDERER", "opengl");
 
-    QApplication::setOrganizationName("qlcplus");
-    QApplication::setOrganizationDomain("qlcplus.org");
+    // Own settings and cache location, so that it can be installed next to
+    // QLC+ without the two sharing (and overwriting) their configuration
+    QApplication::setOrganizationName("vertexav");
     QApplication::setApplicationName(APPNAME);
     QApplication::setApplicationVersion(QString(APPVERSION));
 
     printVersion();
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("Q Light Controller Plus");
+    parser.setApplicationDescription(QString("%1, based on the %2 engine").arg(APPNAME, ENGINENAME));
 
     parser.addHelpOption();
     parser.addVersionOption();
