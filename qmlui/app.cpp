@@ -64,6 +64,7 @@
 #include "tardis.h"
 #include "networkmanager.h"
 #include "stagewizard.h"
+#include "directormanager.h"
 
 #include "qlcfixturedefcache.h"
 #include "audioplugincache.h"
@@ -229,6 +230,10 @@ void App::startup()
     m_stageWizard = new StageWizard(m_doc, m_fixtureManager, m_functionManager,
                                     m_virtualConsole, m_contextManager, this);
     rootContext()->setContextProperty("stageWizard", m_stageWizard);
+
+    m_director = new DirectorManager(m_doc, this);
+    rootContext()->setContextProperty("director", m_director);
+    m_stageWizard->setDirector(m_director);
 
     m_contextManager->registerContext(m_virtualConsole);
     m_contextManager->registerContext(m_simpleDesk);
@@ -1187,6 +1192,10 @@ bool App::loadXML(QXmlStreamReader &doc, bool goToConsole, bool fromMemory)
             SimpleDesk::instance()->loadXML(doc);
         }
 #endif
+        else if (doc.name() == KXMLQLCDirector)
+        {
+            m_director->loadXML(doc);
+        }
         else if (doc.name() == KXMLQLCCreator)
         {
             /* Ignore creator information */
@@ -1266,6 +1275,9 @@ QFile::FileError App::saveXML(const QString& fileName, bool autosave)
 
     /* Write Simple Desk to the XML document */
     //SimpleDesk::instance()->saveXML(&doc);
+
+    /* Write the Director rules, if any, to the XML document */
+    m_director->saveXML(&doc);
 
     doc.writeEndElement(); // close KXMLQLCWorkspace
 

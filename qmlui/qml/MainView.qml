@@ -41,6 +41,9 @@ Rectangle
     property bool showWizardVisible: false
     function openShowWizard() { mainView.showWizardVisible = true }
 
+    property bool directorVisible: false
+    function toggleDirector() { mainView.directorVisible = !mainView.directorVisible }
+
     function enableContext(ctx, setChecked)
     {
         var item = null
@@ -518,6 +521,20 @@ Rectangle
                 color: "transparent"
             }
 
+            // ################## DIRECTOR ##################
+            IconButton
+            {
+                id: directorButton
+                implicitWidth: UISettings.iconSizeDefault
+                implicitHeight: UISettings.iconSizeDefault
+                Layout.alignment: Qt.AlignTop
+                bgColor: "transparent"
+                faSource: FontAwesome.fa_wand_magic_sparkles
+                faColor: (director && director.enabled) ? "#3CCB5A" : (mainView.directorVisible ? UISettings.highlight : "white")
+                tooltip: qsTr("Director: let the music run the show")
+                onClicked: mainView.toggleDirector()
+            }
+
             // ################## STOP ALL FUNCTIONS ##################
             IconButton
             {
@@ -579,6 +596,17 @@ Rectangle
         source: parent.showWizardVisible ? "qrc:/ShowWizard.qml" : ""
         z: 100
         onLoaded: if (item) { item.closeRequested.connect(function() { mainView.showWizardVisible = false }); item.open() }
+    }
+
+    Loader
+    {
+        id: directorOverlay
+        x: parent.width - width - 10
+        y: (mainToolbar.visible ? mainToolbar.height : 0) + 10
+        z: 90
+        active: mainView.directorVisible
+        source: "qrc:/DirectorPanel.qml"
+        onLoaded: if (item) item.closeRequested.connect(function() { mainView.directorVisible = false })
     }
 
     Loader

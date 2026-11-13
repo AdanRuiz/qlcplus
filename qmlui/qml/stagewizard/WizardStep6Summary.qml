@@ -206,6 +206,15 @@ Item
                 }
             }
 
+            WizardOptionRow
+            {
+                Layout.fillWidth: true
+                checked: stageWizard ? stageWizard.useDirector : true
+                title: qsTr("Let the Director run the show")
+                body: qsTr("Builds colour looks and default rules from the groups and effects above, then switches them on its own following the music (VertexAV Link input) or the built-in demo. Open the Director panel from the toolbar to watch and override it.")
+                onToggled: function(value) { stageWizard.useDirector = value }
+            }
+
             Item { Layout.fillHeight: true }
         }
 

@@ -18,6 +18,7 @@
 */
 
 #include "stagewizard.h"
+#include "directormanager.h"
 
 #include "doc.h"
 #include "fixture.h"
@@ -1172,6 +1173,19 @@ void StageWizard::createFixtureGroups()
     }
 }
 
+void StageWizard::setDirector(DirectorManager *director)
+{
+    m_director = director;
+}
+
+void StageWizard::setUseDirector(bool use)
+{
+    if (m_useDirector == use)
+        return;
+    m_useDirector = use;
+    emit useDirectorChanged();
+}
+
 void StageWizard::generate()
 {
     if (m_isGenerating) return;
@@ -1182,6 +1196,7 @@ void StageWizard::generate()
     m_generatedFunctionIDs.clear();
     m_generatedGroupIDs.clear();
     m_basePositionScenes.clear();
+    m_manifest.clear();
 
     // Apply the chosen stage type and place the fixtures FIRST, while a box's
     // groupId still tells us whether the group pre-existed (loaded from the
@@ -1223,6 +1238,21 @@ void StageWizard::generate()
     {
         if (!grp.selected || grp.fixtureIDs.isEmpty())
             continue;
+
+        // Tell the Director what this group is, independently of its name
+        if (grp.groupId != FixtureGroup::invalidId())
+        {
+            DirectorManifest::Group mg;
+            mg.id = grp.groupId;
+            mg.name = grp.name;
+            mg.role = int(grp.role);
+            mg.hasMovement = grp.hasMovement;
+            mg.hasColor = grp.hasRGB || grp.hasCMY;
+            mg.hasShutter = grp.hasShutter;
+            mg.hasDimmer = grp.hasDimmer;
+            m_manifest.groups.append(mg);
+        }
+
         generateGroupFunctions(grp);
     }
 
@@ -1253,6 +1283,12 @@ void StageWizard::generate()
         {
             m_generatedFunctionIDs.append(c->id());
             c->setPath(cuesPath);
+
+            DirectorManifest::Item item;
+            item.function = c->id();
+            item.group = FixtureGroup::invalidId();
+            item.effect = eff.flag;
+            m_manifest.items.append(item);
         }
 
         for (int i = cueStart; i < m_generatedFunctionIDs.count(); i++)
@@ -1267,6 +1303,11 @@ void StageWizard::generate()
     generateBlinderFlash();
 
     createVCLayout();
+
+    // Hand the show over to the Director: it builds its own palettes, wash
+    // scenes and default rules out of what has just been generated.
+    if (m_director != nullptr && m_useDirector)
+        m_director->setupFromManifest(m_manifest, true);
 
     // Rebuild the function tree so all generated functions (and their paths)
     // show up in the QML function list without needing a reload. Palettes
@@ -1305,6 +1346,9 @@ void StageWizard::generateGroupFunctions(const FixtureGroupEntry &grp)
         if (!eff.enabled || !eff.available)
             continue;
 
+        // Whatever this effect adds is recorded in the Director manifest
+        const int manifestStart = m_generatedFunctionIDs.count();
+
         switch (eff.flag)
         {
             // Color / Shutter / Dimmer / Position are now generated as
@@ -1342,6 +1386,10 @@ void StageWizard::generateGroupFunctions(const FixtureGroupEntry &grp)
                 if (grp.hasRGB || grp.hasCMY)
                 {
                     Chaser *ch = generateColorRainbow(grp, prefix);
+                    // The chaser comes back not yet owned by the Doc: without an
+                    // id it could not be started, saved or shown in the tree.
+                    if (ch && ch->id() == Function::invalidId())
+                        m_doc->addFunction(ch);
                     if (ch) m_generatedFunctionIDs.append(ch->id());
                 }
                 break;
@@ -1349,6 +1397,10 @@ void StageWizard::generateGroupFunctions(const FixtureGroupEntry &grp)
                 if (grp.hasRGB || grp.hasCMY)
                 {
                     Chaser *ch = generateSplitColor(grp, prefix);
+                    // The chaser comes back not yet owned by the Doc: without an
+                    // id it could not be started, saved or shown in the tree.
+                    if (ch && ch->id() == Function::invalidId())
+                        m_doc->addFunction(ch);
                     if (ch) m_generatedFunctionIDs.append(ch->id());
                 }
                 break;
@@ -1362,6 +1414,10 @@ void StageWizard::generateGroupFunctions(const FixtureGroupEntry &grp)
                 if (grp.hasShutter)
                 {
                     Chaser *ch = generateStrobeChase(grp, prefix);
+                    // The chaser comes back not yet owned by the Doc: without an
+                    // id it could not be started, saved or shown in the tree.
+                    if (ch && ch->id() == Function::invalidId())
+                        m_doc->addFunction(ch);
                     if (ch) m_generatedFunctionIDs.append(ch->id());
                 }
                 break;
@@ -1396,6 +1452,18 @@ void StageWizard::generateGroupFunctions(const FixtureGroupEntry &grp)
                 break;
             default:
                 break;
+        }
+
+        // Every generator appends its top level Function last (a chaser
+        // after its steps, a Collection after its EFX). The "All Groups"
+        // aggregate is skipped: it would duplicate what the groups do.
+        if (!grp.isAggregate && m_generatedFunctionIDs.count() > manifestStart)
+        {
+            DirectorManifest::Item item;
+            item.function = m_generatedFunctionIDs.last();
+            item.group = grp.groupId;
+            item.effect = eff.flag;
+            m_manifest.items.append(item);
         }
     }
 

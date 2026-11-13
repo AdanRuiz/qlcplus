@@ -82,6 +82,9 @@ set(SRC_FILES
     virtualconsole/vcspeeddial.cpp virtualconsole/vcspeeddial.h
     virtualconsole/vcspeeddialpreset.cpp virtualconsole/vcspeeddialpreset.h
     virtualconsole/virtualconsole.cpp virtualconsole/virtualconsole.h
+    director/directorengine.cpp director/directorengine.h
+    director/directormanager.cpp director/directormanager.h
+    director/directormanifest.h
     stagewizard/stagewizard.cpp stagewizard/stagewizard.h
     stagewizard/stagewizard_placement.cpp
     stagewizard/stagewizard_functions.cpp
@@ -129,6 +132,8 @@ target_include_directories(${module_name} PRIVATE
     tardis
     virtualconsole
     stagewizard
+    director
+    ../plugins/vertexav
 )
 target_include_directories(${module_name} PUBLIC ${FFTW3_INCLUDE_DIRS})
 
@@ -241,6 +246,7 @@ if(lupdate_only)
         qml/popup/*.qml
         qml/showmanager/*.qml
         qml/stagewizard/*.qml
+        qml/director/*.qml
         qml/virtualconsole/*.qml
     )
 endif()

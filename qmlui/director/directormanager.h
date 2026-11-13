@@ -1,0 +1,268 @@
+/*
+  Q Light Controller Plus
+  directormanager.h
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0.txt
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+#ifndef DIRECTORMANAGER_H
+#define DIRECTORMANAGER_H
+
+#include <QElapsedTimer>
+#include <QVariantList>
+#include <QStringList>
+#include <QObject>
+#include <QColor>
+#include <QTimer>
+#include <QPair>
+#include <QList>
+
+#include "directormanifest.h"
+#include "directorengine.h"
+
+class QXmlStreamReader;
+class QXmlStreamWriter;
+class Doc;
+
+#define KXMLQLCDirector QStringLiteral("Director")
+
+/**
+ * DirectorManager runs a show on its own: it listens to the musical
+ * information published by the VertexAV Link input plugin (beats, section,
+ * intensity, palette), asks DirectorEngine what should be running and
+ * starts/stops the Functions accordingly.
+ *
+ * It also provides a demo mode, which feeds the engine with a synthetic
+ * song so that a show can be previewed in the 2D/3D views with no music,
+ * no fixtures and no emitter.
+ */
+class DirectorManager final : public QObject
+{
+    Q_OBJECT
+    Q_DISABLE_COPY(DirectorManager)
+
+    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
+    Q_PROPERTY(bool hasRules READ hasRules NOTIFY rulesChanged)
+    Q_PROPERTY(int rulesCount READ rulesCount NOTIFY rulesChanged)
+    Q_PROPERTY(QVariantList rules READ rulesModel NOTIFY rulesChanged)
+
+    Q_PROPERTY(QString source READ source NOTIFY musicChanged)
+    Q_PROPERTY(bool connected READ connected NOTIFY musicChanged)
+    Q_PROPERTY(int bpm READ bpm NOTIFY musicChanged)
+    Q_PROPERTY(QString section READ section NOTIFY musicChanged)
+    Q_PROPERTY(QString intensity READ intensity NOTIFY musicChanged)
+    Q_PROPERTY(QString detectedSection READ detectedSection NOTIFY musicChanged)
+    Q_PROPERTY(QString detectedIntensity READ detectedIntensity NOTIFY musicChanged)
+    Q_PROPERTY(QString mood READ mood NOTIFY musicChanged)
+    Q_PROPERTY(int energy READ energy NOTIFY musicChanged)
+    Q_PROPERTY(bool strobeOk READ strobeOk NOTIFY musicChanged)
+    Q_PROPERTY(QVariantList paletteColors READ paletteColors NOTIFY musicChanged)
+    Q_PROPERTY(int beatInBar READ beatInBar NOTIFY beat)
+
+    Q_PROPERTY(QString ruleName READ ruleName NOTIFY lookChanged)
+    Q_PROPERTY(QVariantList layers READ layersModel NOTIFY lookChanged)
+    Q_PROPERTY(int barsInRule READ barsInRule NOTIFY lookChanged)
+
+    Q_PROPERTY(QString forcedSection READ forcedSection NOTIFY overridesChanged)
+    Q_PROPERTY(QString forcedIntensity READ forcedIntensity NOTIFY overridesChanged)
+    Q_PROPERTY(bool hold READ hold WRITE setHold NOTIFY overridesChanged)
+    Q_PROPERTY(bool strobeAllowed READ strobeAllowed WRITE setStrobeAllowed NOTIFY overridesChanged)
+    Q_PROPERTY(bool blackout READ blackout WRITE setBlackout NOTIFY overridesChanged)
+    Q_PROPERTY(bool strobeForced READ strobeForced WRITE setStrobeForced NOTIFY overridesChanged)
+    Q_PROPERTY(int activeOverrides READ activeOverrides NOTIFY overridesChanged)
+
+    Q_PROPERTY(bool demoRunning READ demoRunning NOTIFY demoChanged)
+    Q_PROPERTY(int demoBpm READ demoBpm WRITE setDemoBpm NOTIFY demoChanged)
+    Q_PROPERTY(QVariantList demoSong READ demoSong CONSTANT)
+    Q_PROPERTY(int demoStep READ demoStep NOTIFY demoChanged)
+
+    Q_PROPERTY(QStringList sections READ sections CONSTANT)
+    Q_PROPERTY(QStringList intensities READ intensities CONSTANT)
+
+public:
+    explicit DirectorManager(Doc *doc, QObject *parent = nullptr);
+    ~DirectorManager() override;
+
+    /*********************************************************************
+     * State
+     *********************************************************************/
+public:
+    bool enabled() const;
+    void setEnabled(bool enable);
+
+    bool hasRules() const;
+    int rulesCount() const;
+    QVariantList rulesModel() const;
+
+    QString source() const;
+    bool connected() const;
+    int bpm() const;
+    QString section() const;
+    QString intensity() const;
+    QString detectedSection() const;
+    QString detectedIntensity() const;
+    QString mood() const;
+    int energy() const;
+    bool strobeOk() const;
+    QVariantList paletteColors() const;
+    int beatInBar() const;
+
+    QString ruleName() const;
+    QVariantList layersModel() const;
+    int barsInRule() const;
+
+    QStringList sections() const;
+    QStringList intensities() const;
+
+    /*********************************************************************
+     * Overrides
+     *********************************************************************/
+public:
+    QString forcedSection() const;
+    QString forcedIntensity() const;
+    bool hold() const;
+    void setHold(bool hold);
+    bool strobeAllowed() const;
+    void setStrobeAllowed(bool allowed);
+    bool blackout() const;
+    void setBlackout(bool blackout);
+    bool strobeForced() const;
+    void setStrobeForced(bool forced);
+    int activeOverrides() const;
+
+    /** Force a section/intensity. An empty string gives control back */
+    Q_INVOKABLE void forceSection(const QString &section);
+    Q_INVOKABLE void forceIntensity(const QString &intensity);
+
+    /** Keep on $layer what is running now, until released */
+    Q_INVOKABLE void pinLayer(int layer, bool pin);
+    Q_INVOKABLE void setLayerOff(int layer, bool off);
+
+    /** Jump to the next candidate of every layer */
+    Q_INVOKABLE void nextLook();
+
+    /** Drop every override and give control back to the music */
+    Q_INVOKABLE void releaseAll();
+
+    /*********************************************************************
+     * Rules
+     *********************************************************************/
+public:
+    /** Build Director scenes, palettes and default rules from what the
+     *  Stage Wizard has just generated */
+    void setupFromManifest(const DirectorManifest &manifest, bool enable);
+
+    /** Delete the rules and the Functions the Director created */
+    Q_INVOKABLE void clearRules();
+
+    /*********************************************************************
+     * Demo mode
+     *********************************************************************/
+public:
+    bool demoRunning() const;
+    int demoBpm() const;
+    void setDemoBpm(int bpm);
+    QVariantList demoSong() const;
+    int demoStep() const;
+
+    Q_INVOKABLE void startDemo();
+    Q_INVOKABLE void stopDemo();
+
+    /** Jump to the given step of the demo song at the next bar */
+    Q_INVOKABLE void demoJumpTo(int step);
+
+    /*********************************************************************
+     * Load & Save
+     *********************************************************************/
+public:
+    bool loadXML(QXmlStreamReader &root);
+    bool saveXML(QXmlStreamWriter *doc) const;
+
+signals:
+    void enabledChanged();
+    void rulesChanged();
+    void musicChanged();
+    void lookChanged();
+    void overridesChanged();
+    void demoChanged();
+    void beat();
+
+private slots:
+    void slotInputValueChanged(quint32 universe, quint32 channel, uchar value, const QString &key);
+    void slotFunctionRemoved(quint32 id);
+    void slotDocClearing();
+    void slotWatchdog();
+    void slotDemoTick();
+    void slotStartPending();
+
+private:
+    /** Entry point of the musical information, real or simulated */
+    void handleChannel(quint32 channel, uchar value);
+    void handleBar();
+    void execute(const QList<DirectorEngine::Action> &actions);
+    void evaluateNow();
+    void stopStragglers();
+    void applyBaseLevel();
+    void applyPalette();
+    qreal baseLevel() const;
+    void reset();
+
+    quint32 findOrCreatePalette(int type, const QString &name, const QVariantList &values, bool reuse);
+    quint32 makeScene(const QString &name, quint32 groupId, const QList<quint32> &palettes);
+    void pushDemoStep();
+
+private:
+    Doc *m_doc;
+    DirectorEngine m_engine;
+    bool m_enabled;
+
+    /* Musical state */
+    int m_bpm;
+    int m_energy;
+    QString m_mood;
+    bool m_playing;
+    int m_beatInBar;
+    bool m_hasDownbeat;
+    QElapsedTimer m_lastInput;
+    QElapsedTimer m_lastBeat;
+    bool m_gotInput;
+    QTimer m_watchdog;
+
+    /* Palette */
+    static const int PaletteSlots = 3;
+    QColor m_inColors[6];
+    QColor m_appliedColors[PaletteSlots];
+    quint32 m_slotPalette[PaletteSlots];
+    bool m_paletteDirty;
+
+    /* Functions created by the Director, deleted when rules are rebuilt */
+    QList<quint32> m_ownFunctions;
+
+    /* Everything the Director has started and not yet seen stopped. A
+     * Function asked to stop before its first timer tick is not "running"
+     * yet, so the stop has to be checked again later. */
+    QList<quint32> m_started;
+
+    /* Starts deferred by one timer tick, to let the stops happen first */
+    QList<QPair<int, quint32> > m_pendingStarts;
+
+    /* Demo */
+    QTimer m_demoTimer;
+    int m_demoBpm;
+    int m_demoBeat;
+    int m_demoStep;
+    int m_demoBarsLeft;
+    int m_demoJump;
+};
+
+#endif

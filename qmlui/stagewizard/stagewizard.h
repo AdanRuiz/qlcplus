@@ -29,6 +29,7 @@
 #include <climits>
 
 #include "vcpage.h"
+#include "directormanifest.h"
 
 class Doc;
 class VCWidget;
@@ -44,6 +45,7 @@ class ContextManager;
 class FixtureManager;
 class FunctionManager;
 class MainView3D;
+class DirectorManager;
 
 class StageWizard : public QObject
 {
@@ -82,6 +84,9 @@ class StageWizard : public QObject
     Q_PROPERTY(bool canGoNext  READ canGoNext  NOTIFY canGoNextChanged)
     Q_PROPERTY(bool isGenerating READ isGenerating NOTIFY isGeneratingChanged)
     Q_PROPERTY(QVariant summaryModel READ summaryModel NOTIFY summaryModelChanged)
+
+    // ── Director ─────────────────────────────────────────────────────────────
+    Q_PROPERTY(bool useDirector READ useDirector WRITE setUseDirector NOTIFY useDirectorChanged)
 
 public:
     // Show type – drives stage selection and effect defaults
@@ -271,6 +276,16 @@ public:
     /** Run the full generation pipeline. Emits generationComplete() when done. */
     Q_INVOKABLE void generate();
 
+    // ── Director ─────────────────────────────────────────────────────────────
+    /** The Director that receives the manifest of what has been generated. */
+    void setDirector(DirectorManager *director);
+
+    bool useDirector() const { return m_useDirector; }
+    void setUseDirector(bool use);
+
+    /** What the last generate() produced, in a name-independent form. */
+    const DirectorManifest &manifest() const { return m_manifest; }
+
 signals:
     void currentStepChanged(int step);
     void showTypeChanged(int type);
@@ -291,6 +306,7 @@ signals:
     void isGeneratingChanged();
     void summaryModelChanged();
     void generationComplete();
+    void useDirectorChanged();
 
 private:
     // ── Internal helpers ─────────────────────────────────────────────────────
@@ -701,6 +717,12 @@ private:
     bool m_ctrlMap      = true;    ///< Auto-map VC widgets to the controller
     bool m_ctrlFeedback = true;    ///< Enable the feedback (output) patch
     bool m_ctrlColors   = true;    ///< Map button colours to colour-table feedback
+
+    // Director: who gets the manifest, whether to hand the show over to it,
+    // and the manifest itself (filled during generation).
+    DirectorManager *m_director = nullptr;
+    bool             m_useDirector = true;
+    DirectorManifest m_manifest;
 
     // Synthetic "All Groups" aggregate (union of all selected groups' fixtures
     // and capabilities), backed by a real FixtureGroup created at generation.
