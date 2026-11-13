@@ -257,3 +257,8 @@ target_sources(${module_name} PUBLIC
 )
 
 install(TARGETS ${module_name} DESTINATION ${INSTALLROOT}/${BINDIR})
+
+# Checks of the Director, built only on request (ninja director_tests)
+if(NOT ANDROID AND NOT IOS)
+    add_subdirectory(director/test)
+endif()

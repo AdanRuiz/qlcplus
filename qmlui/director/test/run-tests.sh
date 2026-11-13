@@ -1,85 +1,86 @@
 #!/bin/bash
 #
-# Builds QLC+ 5 and runs every Director check. Meant for a Linux container
-# with the repository mounted on /src and a build directory on /build:
+# Builds the application and runs every Director check. The checks are CMake
+# targets (see CMakeLists.txt next to this file), so the same script works
+# on Windows (MSYS2) and on Linux. Exit code 0 = everything passed.
+#
+# Windows, from an MSYS2 MINGW64 shell with Qt's bin directory at the END of
+# the PATH (its MinGW runtime must not shadow the compiler's):
+#
+#   SRC=/c/path/to/sources BUILD=/c/path/to/build qmlui/director/test/run-tests.sh
+#
+# Linux container, with the repository on /src and a build directory on /build:
 #
 #   docker build -t qlcbuild qmlui/director/test
 #   docker run -d --name qlcb -v "$PWD:/src" -v qlcbuildvol:/build qlcbuild sleep infinity
 #   docker exec qlcb /src/qmlui/director/test/run-tests.sh
 #
-# The first run configures and builds everything (about 20 minutes); later
-# runs only rebuild what changed. Exit code 0 = everything passed.
+# The first run configures and builds everything; later runs only rebuild
+# what changed.
 
 SRC=${SRC:-/src}
 BUILD=${BUILD:-/build}
-WORK=${WORK:-/tmp/director-tests}
-MOC=/usr/lib/qt6/libexec/moc
-QTINC=$(pkg-config --variable=includedir Qt6Core)
-NOISE="Detected locale\|Qt depends\|If this causes\|for more information\|unknown fixture"
+NOISE="QFontDatabase\|Qt no longer ships fonts\|Detected locale\|Qt depends\|If this causes\|for more information\|unknown fixture"
 FAILED=0
+
+case "$(uname -s)" in
+    MINGW*|MSYS*)
+        EXE=.exe
+        WORK=${WORK:-$BUILD/director-tests}
+        # Applied after the build (see below): the engine DLL is not next
+        # to the test executables, and Qt's DLLs need the MinGW runtime that
+        # ships with Qt, which must come first to run but last to compile.
+        RUNPATH="$BUILD/engine/src:$(dirname "$(command -v windeployqt)")"
+        # Without a console, Qt would send its messages to the debugger
+        export QT_FORCE_STDERR_LOGGING=1
+        ;;
+    *)
+        EXE=
+        WORK=${WORK:-/tmp/director-tests}
+        ;;
+esac
+BIN=$BUILD/qmlui/director/test
+T=$SRC/qmlui/director/test
 
 fail() { echo "FAILED: $1"; FAILED=1; }
 
 mkdir -p "$WORK" && cd "$WORK" || exit 1
 
-echo "== Application build"
+echo "== Application and test build"
 if [ ! -f "$BUILD/build.ninja" ]; then
     cmake -S "$SRC" -B "$BUILD" -G Ninja -Dqmlui=ON -DCMAKE_BUILD_TYPE=Debug > "$WORK/configure.log" 2>&1 || fail "configure (see $WORK/configure.log)"
 fi
-(cd "$BUILD" && ninja -j"${JOBS:-6}" qlcplus5 > "$WORK/build.log" 2>&1) || { fail "application build"; grep -n "error" "$WORK/build.log" | head -20; }
+JOBS_ARG=${JOBS:+-j$JOBS}
+[ -z "$JOBS_ARG" ] && [ -z "$EXE" ] && JOBS_ARG=-j6
+(cd "$BUILD" && ninja $JOBS_ARG qlcplus5 director_tests > "$WORK/build.log" 2>&1) || { fail "build (see $WORK/build.log)"; grep -n "error" "$WORK/build.log" | head -20; }
 
-INC="-I. -I$SRC/qmlui -I$SRC/engine/src -I$SRC/engine/audio/src -I$SRC/plugins/interfaces \
--I$SRC/plugins/midi/src/common -I$SRC/plugins/vertexav -I$SRC/qmlui/director -I$SRC/qmlui/fixtureeditor \
--I$SRC/qmlui/stagewizard -I$SRC/qmlui/tardis -I$SRC/qmlui/virtualconsole -I$SRC/hotplugmonitor/src \
--I$QTINC/Qt3DCore -I$QTINC/Qt3DRender -I$QTINC/Qt3DExtras -I$QTINC/Qt3DInput -I$QTINC/Qt3DLogic \
--I$QTINC/Qt3DQuick -I$QTINC/Qt3DQuickExtras"
-PK="Qt6Core Qt6Gui Qt6Test Qt6Quick Qt6Qml Qt6Multimedia Qt6Widgets Qt6Network"
-ENGINE_LIB="-L$BUILD/engine/src -lqlcplusengine5 -Wl,-rpath,$BUILD/engine/src"
-T=$SRC/qmlui/director/test
-D=$SRC/qmlui/director
+[ -n "$RUNPATH" ] && export PATH="$RUNPATH:$PATH"
 
+# Results go to a file: on Windows nothing reaches a redirected stdout
 echo "== Decision engine (no QLC+ dependencies)"
-$MOC $T/directorengine_test.cpp -o directorengine_test.moc
-g++ -std=c++17 -fPIC -I. $(pkg-config --cflags Qt6Core Qt6Test) $T/directorengine_test.cpp $D/directorengine.cpp \
-    -o engine_test $(pkg-config --libs Qt6Core Qt6Test) || fail "engine test build"
-./engine_test 2>&1 | grep "FAIL\|Loc:\|Totals"
-[ "${PIPESTATUS[0]}" = "0" ] || fail "engine test"
+"$BIN/directorengine_test$EXE" -o "$WORK/engine.txt,txt" > /dev/null 2>&1 || fail "engine test"
+grep "FAIL\|Loc:\|Totals" "$WORK/engine.txt"
 
 echo "== Manager against a real Doc"
-$MOC $D/directormanager.h -o moc_directormanager.cpp
-$MOC $T/directormanager_test.cpp -o directormanager_test.moc
-g++ -g -std=c++17 -fPIC -DQMLUI $INC $(pkg-config --cflags $PK) $T/directormanager_test.cpp $D/directormanager.cpp \
-    $D/directorengine.cpp moc_directormanager.cpp -o manager_test $ENGINE_LIB \
-    $(pkg-config --libs Qt6Core Qt6Gui Qt6Test Qt6Widgets) 2>&1 | grep "error"
-[ -x manager_test ] || fail "manager test build"
-QT_QPA_PLATFORM=offscreen timeout 120 ./manager_test 2>&1 | grep "FAIL\|Loc:\|Totals\|signal"
-[ "${PIPESTATUS[0]}" = "0" ] || fail "manager test"
+QT_QPA_PLATFORM=offscreen timeout 120 "$BIN/directormanager_test$EXE" -o "$WORK/manager.txt,txt" > /dev/null 2>&1 || fail "manager test"
+grep "FAIL\|Loc:\|Totals\|signal" "$WORK/manager.txt"
 
 echo "== End to end: real Stage Wizard + Director + panel, inside the application"
-cd "$BUILD" || exit 1
-COMPILE=$(ninja -t commands qlcplus5 | grep "qlcplus5.dir/app.cpp.o " | head -1 | \
-    sed "s#qmlui/CMakeFiles/qlcplus5.dir/app.cpp.o#$WORK/e2e.o#g; s#$SRC/qmlui/app.cpp#$T/director_e2e.cpp#g")
-bash -c "$COMPILE" 2>&1 | grep "error"
-LINK=$(ninja -t commands qlcplus5 | tail -1 | \
-    sed "s#qmlui/CMakeFiles/qlcplus5.dir/main.cpp.o#$WORK/e2e.o#g; s#-o qmlui/qlcplus5#-o $WORK/e2e#g")
-bash -c "$LINK" 2>&1 | grep "error"
-[ -x "$WORK/e2e" ] || fail "end to end build"
 BAR=$T/data/SteelPro-1030-Bar-43Ch.qxf
-(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR QLCPLUS_DIRECTOR_LOG="$WORK/director.log"     QT_QPA_PLATFORM=offscreen timeout 60 "$WORK/e2e" > "$WORK/e2e.log" 2>&1) || fail "end to end run (see $WORK/e2e.log)"
-grep "^FAIL\|E2E\|  layer\|signal" "$WORK/e2e.log"
+(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR QLCPLUS_DIRECTOR_LOG="$WORK/director.log" \
+    QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e.log" 2>&1) || fail "end to end run (see $WORK/e2e.log)"
+# -a: the function names carry non-ASCII dashes
+grep -a "^FAIL\|E2E\|  layer\|signal" "$WORK/e2e.log"
 
 echo "== End to end: a rig of motorised bars only, project saved"
-(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/bars.qxw"     QT_QPA_PLATFORM=offscreen timeout 60 "$WORK/e2e" > "$WORK/e2e-bars.log" 2>&1) || fail "bars only run (see $WORK/e2e-bars.log)"
-grep "^FAIL\|E2E\|  layer\|  rule\|signal" "$WORK/e2e-bars.log"
+(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/bars.qxw" \
+    QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e-bars.log" 2>&1) || fail "bars only run (see $WORK/e2e-bars.log)"
+grep -a "^FAIL\|E2E\|  layer\|  rule\|signal" "$WORK/e2e-bars.log"
 
 echo "== Panel: QML warnings and screenshot"
 cd "$WORK" || exit 1
-mkdir -p panel && cp $SRC/qmlui/qml/*.qml $SRC/qmlui/qml/qmldir $SRC/qmlui/qml/director/DirectorPanel.qml panel/
-g++ -g -std=c++17 -fPIC -DQMLUI $INC $(pkg-config --cflags $PK) $T/directorpanel_preview.cpp $D/directormanager.cpp \
-    $D/directorengine.cpp moc_directormanager.cpp -o panel_preview $ENGINE_LIB \
-    $(pkg-config --libs Qt6Core Qt6Gui Qt6Quick Qt6Qml) 2>&1 | grep "error"
-[ -x panel_preview ] || fail "panel preview build"
-QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software timeout 60 ./panel_preview panel/DirectorPanel.qml "$WORK/panel.png" 2>&1 | grep -v "$NOISE"
+mkdir -p panel && cp "$SRC"/qmlui/qml/*.qml "$SRC/qmlui/qml/qmldir" "$SRC/qmlui/qml/director/DirectorPanel.qml" panel/
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software timeout 60 "$BIN/directorpanel_preview$EXE" panel/DirectorPanel.qml "$WORK/panel.png" 2>&1 | grep -v "$NOISE"
 [ "${PIPESTATUS[0]}" = "0" ] || fail "panel preview"
 
 echo
