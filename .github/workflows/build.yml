@@ -6,15 +6,22 @@ on:
   workflow_dispatch:
 
 # Forks (anything other than mcallegari/qlcplus) build only Windows for development.
+# The Linux job of QLC+ 5, which is the one that runs the unit tests, also
+# runs there for a pull request, for a release tag (vX.Y.Z: X major/API,
+# Y feature, Z fix) and when the workflow is started by hand.
 jobs:
   build-linux:
-    if: github.repository == 'mcallegari/qlcplus'
+    if: >-
+      github.repository == 'mcallegari/qlcplus' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     name: QLCplus Linux ${{matrix.task}}
     strategy:
       #fail-fast: false
       matrix:
-        task: [build-v4, build-v5, coverage-build-v4]
+        task: ${{ fromJSON(github.repository == 'mcallegari/qlcplus' && '["build-v4","build-v5","coverage-build-v4"]' || '["build-v5"]') }}
     env:
       CI_REPO_SLUG: ${{ github.repository }}
       CI_BRANCH: ${{ github.head_ref }}
@@ -259,6 +266,8 @@ jobs:
           path: qlcplus-${{env.TASK}}-${{env.APPVERSION}}-${{env.BUILD_DATE}}-${{env.GIT_REV}}.AppImage
 
   build-windows:
+    # On a fork, the push that updates a pull request has already built this
+    if: github.repository == 'mcallegari/qlcplus' || github.event_name != 'pull_request'
     runs-on: windows-latest
     name: QLCplus Windows ${{matrix.task}}
     strategy:
@@ -401,7 +410,8 @@ jobs:
         shell: msys2 {0}
         if: ${{ matrix.task == 'build-v5' }}
         run: |
-          cmake -S . -B build -DCMAKE_PREFIX_PATH="${{ env.QTDIR }}/lib/cmake" -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -Dqmlui=ON
+          # The unit tests are not run on Windows, so they are not built either
+          cmake -S . -B build -DCMAKE_PREFIX_PATH="${{ env.QTDIR }}/lib/cmake" -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -Dqmlui=ON -Dtests=OFF
 
       - name: Build for Windows
         shell: msys2 {0}

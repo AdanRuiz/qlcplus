@@ -1,4 +1,6 @@
 project(enttecwing)
 
 add_subdirectory(src)
-add_subdirectory(test)
+if(tests)
+    add_subdirectory(test)
+endif()

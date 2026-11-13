@@ -3,6 +3,10 @@ project(qlcplus VERSION 4.14.4 LANGUAGES C CXX)
 
 option(qmlui "Build for QLC+ 5 QML UI" OFF)
 
+# The unit tests are about 300 of the 740 build steps. Turn them off
+# (-Dtests=OFF) for a build that is only going to be packaged or run by hand.
+option(tests "Build the unit tests" ON)
+
 # Note: the default CMAKE_BUILD_TYPE is set in variables.cmake, together
 # with the DEVEL flag it follows
 
@@ -142,14 +146,17 @@ add_custom_target(lcov
 )
 
 # Translations
+# Run through bash explicitly: on Windows, launching the script by name hands
+# it to whatever program is associated with .sh files (an editor, usually)
+find_program(BASH_PROGRAM bash REQUIRED)
 if (qmlui)
   add_custom_target(translations ALL
-    COMMAND ./translate.sh release qmlui
+    COMMAND ${BASH_PROGRAM} ./translate.sh release qmlui
     COMMENT "Translating qmlui translations..."
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 else ()
   add_custom_target(translations ALL
-    COMMAND ./translate.sh release ui
+    COMMAND ${BASH_PROGRAM} ./translate.sh release ui
     COMMENT "Translating ui translations..."
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
