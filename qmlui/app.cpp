@@ -178,7 +178,7 @@ void App::startup()
     qmlRegisterType<FolderBrowser>("org.qlcplus.classes", 1, 0, "FolderBrowser");
 
     setTitle(APPNAME);
-    setIcon(QIcon(":/qlcplus.svg"));
+    setIcon(QIcon(":/vertexav-director.svg"));
 
     if (QFontDatabase::addApplicationFont(":/RobotoCondensed-Regular.ttf") < 0)
         qWarning() << "Roboto condensed cannot be loaded!";

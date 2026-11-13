@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="resources/icons/png/vertexav-director.png" alt="VertexAV Director logo" height="96" />
+</p>
+
 <h1 align="center">VertexAV Director</h1>
 <p align="center">
   <strong>Lighting that follows the music on its own, and a show that works in any venue.</strong><br/>

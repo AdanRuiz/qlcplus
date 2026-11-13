@@ -27,7 +27,8 @@ import "."
 CustomPopupDialog
 {
     id: popupRoot
-    width: mainView.width / 2
+    // wide enough for the text next to the logo, also on a small window
+    width: Math.min(mainView.width * 0.9, Math.max(mainView.width / 2, UISettings.iconSizeDefault * 14))
     title: qsTr("Information")
     standardButtons: Dialog.Close
 
@@ -38,10 +39,13 @@ CustomPopupDialog
 
             Image
             {
-                source: "qrc:/qlcplus.svg"
+                source: "qrc:/vertexav-director.svg"
                 width: UISettings.iconSizeDefault * 3
                 height: width
                 sourceSize: Qt.size(width, height)
+                Layout.preferredWidth: width
+                Layout.preferredHeight: height
+                Layout.alignment: Qt.AlignTop
             }
 
             Text
