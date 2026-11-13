@@ -89,7 +89,7 @@ StageWizard::StageWizard(Doc *doc,
     , m_contextManager(contextManager)
     , m_currentStep(0)
     , m_showType(ClubNight)
-    , m_stageType(0) // MonitorProperties::StageSimple
+    , m_stageType(2) // MonitorProperties::StageRock
     , m_envSize(m_doc->monitorProperties()->gridSize())
     , m_isGenerating(false)
 {
@@ -140,10 +140,9 @@ void StageWizard::setCurrentStep(int step)
     // On entering step 3: set stage default for show type and suggest a size
     if (step == 2)
     {
-        if (m_showType == ClubNight)     setStageType(1); // StageBox
-        else if (m_showType == Concert)  setStageType(2); // StageRock
-        else if (m_showType == Theatrical) setStageType(3); // StageTheatre
-        else                             setStageType(0); // StageSimple
+        // The rock stage is the default for every kind of show; the user
+        // can still pick another one in this step.
+        setStageType(2); // StageRock
 
         suggestEnvSize();
     }
@@ -980,7 +979,7 @@ void StageWizard::reset()
 {
     m_currentStep = 0;
     m_showType    = ClubNight;
-    m_stageType   = 0;
+    m_stageType   = 2;
     m_envSize     = m_doc->monitorProperties()->gridSize();
     m_isGenerating = false;
     m_groups.clear();

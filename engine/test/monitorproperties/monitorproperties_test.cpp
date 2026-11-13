@@ -37,7 +37,7 @@ void MonitorProperties_Test::defaults()
     QCOMPARE(mp.gridSize(), QVector3D(5, 3, 5));
     QCOMPARE(mp.gridUnits(), MonitorProperties::Meters);
     QCOMPARE(mp.pointOfView(), MonitorProperties::Undefined);
-    QCOMPARE(mp.stageType(), MonitorProperties::StageSimple);
+    QCOMPARE(mp.stageType(), MonitorProperties::StageRock);
     QCOMPARE(mp.labelsVisible(), false);
     QVERIFY(mp.commonBackgroundImage().isEmpty());
 }
@@ -152,7 +152,7 @@ void MonitorProperties_Test::reset()
     QCOMPARE(mp.gridSize(), QVector3D(5,3,5));
     QCOMPARE(mp.gridUnits(), MonitorProperties::Meters);
     QCOMPARE(mp.pointOfView(), MonitorProperties::Undefined);
-    QCOMPARE(mp.stageType(), MonitorProperties::StageSimple);
+    QCOMPARE(mp.stageType(), MonitorProperties::StageRock);
     QCOMPARE(mp.labelsVisible(), false);
     QCOMPARE(mp.fixtureItemsID().count(), 0);
     QCOMPARE(mp.lightResources().count(), 0);

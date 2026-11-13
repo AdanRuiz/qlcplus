@@ -87,7 +87,7 @@ MonitorProperties::MonitorProperties()
     , m_gridSize(QVector3D(GRID_DEFAULT_WIDTH, GRID_DEFAULT_HEIGHT, GRID_DEFAULT_DEPTH))
     , m_gridUnits(Meters)
     , m_pointOfView(Undefined)
-    , m_stageType(StageSimple)
+    , m_stageType(StageRock)
     , m_showLabels(false)
 {
 }
@@ -97,7 +97,7 @@ void MonitorProperties::reset()
     m_gridSize = QVector3D(GRID_DEFAULT_WIDTH, GRID_DEFAULT_HEIGHT, GRID_DEFAULT_DEPTH);
     m_gridUnits = Meters;
     m_pointOfView = Undefined;
-    m_stageType = StageSimple;
+    m_stageType = StageRock;
     m_showLabels = false;
     m_fixtureItems.clear();
     m_lightItems.clear();
