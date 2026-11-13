@@ -66,7 +66,13 @@ void VertexAVPlugin::checkHostVersion()
 {
     // QLC+ 5 sets the application version (for example "5.3.0" or "5.3.1 GIT abc123").
     // QLC+ 4 leaves it empty; it shares the plugin interface of its own source tree.
-    const QString text = QCoreApplication::applicationVersion();
+    // A product built on the engine has a version of its own, and says which
+    // engine it carries in the "qlcEngineVersion" property of the application.
+    QString text;
+    if (QCoreApplication::instance() != nullptr)
+        text = QCoreApplication::instance()->property("qlcEngineVersion").toString();
+    if (text.isEmpty())
+        text = QCoreApplication::applicationVersion();
     if (text.isEmpty())
         return;
     const QVersionNumber v = QVersionNumber::fromString(text).normalized();

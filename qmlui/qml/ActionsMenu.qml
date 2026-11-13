@@ -718,7 +718,6 @@ Popup
             PopupAbout
             {
                 id: infoPopup
-                width: mainView.width / 2
             }
         }
     }

@@ -12,6 +12,7 @@ VertexAV Director describes a stage in terms of roles (front wash, moving heads,
 
 - Guide: [docs/director.md](docs/director.md)
 - Plan: [docs/PLAN-venues-director.md](docs/PLAN-venues-director.md)
+- Changes by version: [CHANGELOG.md](CHANGELOG.md)
 
 ### Built on QLC+
 

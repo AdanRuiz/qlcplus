@@ -39,7 +39,7 @@ void printVersion()
 
     cout << Qt::endl;
     cout << APPNAME << " " << "version " << APPVERSION << Qt::endl;
-    cout << "Based on the " << ENGINENAME << " engine (https://www.qlcplus.org)" << Qt::endl;
+    cout << "Based on the " << ENGINENAME << " " << ENGINEVERSION << " engine (https://www.qlcplus.org)" << Qt::endl;
     cout << "This program is licensed under the terms of the ";
     cout << "Apache 2.0 license." << Qt::endl;
     cout << "Copyright (c) Heikki Junnila (hjunnila@users.sf.net)" << Qt::endl;
@@ -61,6 +61,9 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("vertexav");
     QApplication::setApplicationName(APPNAME);
     QApplication::setApplicationVersion(QString(APPVERSION));
+    // The application version is the one of the product. Plugins built for
+    // QLC+ need the version of the engine to tell whether they fit.
+    app.setProperty("qlcEngineVersion", QString(ENGINEVERSION));
 
     printVersion();
 
