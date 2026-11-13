@@ -22,6 +22,12 @@
  * runs wizard-generated Functions on its layers. Also opens the Director
  * panel through the same Loader the toolbar button uses.
  *
+ * Environment:
+ *   DIRECTOR_E2E_BAR_DEF  path of a .qxf of a motorised bar (tilt, no pan);
+ *                         two of them are added to the rig as a third group
+ *   DIRECTOR_E2E_RIG      "bars" = patch only those bars
+ *   DIRECTOR_E2E_SAVE     save the generated project to this path
+ *
  * Exit code 0 = everything checked out.
  */
 
@@ -30,6 +36,7 @@
 #include <QQuickItem>
 #include <QTimer>
 #include <QDebug>
+#include <QFile>
 
 #include "directormanager.h"
 #include "qlcfixturemode.h"
@@ -117,29 +124,71 @@ int main(int argc, char *argv[])
     if (wizard == nullptr || director == nullptr)
         return 1;
 
+    const QString barDef = qEnvironmentVariable("DIRECTOR_E2E_BAR_DEF");
+    const QString savePath = qEnvironmentVariable("DIRECTOR_E2E_SAVE");
+    const bool barsOnly = qEnvironmentVariable("DIRECTOR_E2E_RIG") == "bars";
+
     /* A small rig: 4 pars and 4 moving heads */
-    QList<quint32> pars, movers;
-    for (quint32 i = 0; i < 4; i++)
-        pars << addFixture(doc, i * 4, false)->id();
-    for (quint32 i = 0; i < 4; i++)
-        movers << addFixture(doc, 100 + i * 6, true)->id();
+    QList<quint32> pars, movers, bars;
+    if (barsOnly == false)
+    {
+        for (quint32 i = 0; i < 4; i++)
+            pars << addFixture(doc, i * 4, false)->id();
+        for (quint32 i = 0; i < 4; i++)
+            movers << addFixture(doc, 100 + i * 6, true)->id();
+    }
+
+    /* Optionally, two real motorised bars: they tilt but do not pan */
+    if (barDef.isEmpty() == false)
+    {
+        QLCFixtureDef *def = new QLCFixtureDef();
+        if (def->loadXML(barDef) == QFile::NoError && def->modes().isEmpty() == false)
+        {
+            QLCFixtureMode *mode = def->modes().first();
+            quint32 base = barsOnly ? 0 : 200;
+            for (quint32 i = 0; i < 2; i++)
+            {
+                Fixture *fxi = new Fixture(doc);
+                fxi->setName(QString("Bar %1").arg(i + 1));
+                fxi->setAddress(base + i * quint32(mode->channels().count()));
+                fxi->setUniverse(0);
+                fxi->setFixtureDefinition(def, mode);
+                doc->addFixture(fxi);
+                bars << fxi->id();
+            }
+        }
+        CHECK(bars.count() == 2, "motorised bar definition loaded: " + barDef);
+    }
+    const int expectedGroups = (barsOnly ? 0 : 2) + (bars.isEmpty() ? 0 : 1);
 
     /* The wizard, as the QML pages would drive it */
     wizard->reset();
     wizard->setShowType(StageWizard::ClubNight);
     wizard->setCurrentStep(1);
 
-    int parBox = wizard->addGroup();
-    wizard->renameGroup(parBox, "Pars");
-    foreach (quint32 id, pars)
-        wizard->assignFixtureToGroup(parBox, id);
-    wizard->setGroupSelected(parBox, true);
+    if (barsOnly == false)
+    {
+        int parBox = wizard->addGroup();
+        wizard->renameGroup(parBox, "Pars");
+        foreach (quint32 id, pars)
+            wizard->assignFixtureToGroup(parBox, id);
+        wizard->setGroupSelected(parBox, true);
 
-    int moverBox = wizard->addGroup();
-    wizard->renameGroup(moverBox, "Movers");
-    foreach (quint32 id, movers)
-        wizard->assignFixtureToGroup(moverBox, id);
-    wizard->setGroupSelected(moverBox, true);
+        int moverBox = wizard->addGroup();
+        wizard->renameGroup(moverBox, "Movers");
+        foreach (quint32 id, movers)
+            wizard->assignFixtureToGroup(moverBox, id);
+        wizard->setGroupSelected(moverBox, true);
+    }
+
+    if (bars.isEmpty() == false)
+    {
+        int barBox = wizard->addGroup();
+        wizard->renameGroup(barBox, "Bars");
+        foreach (quint32 id, bars)
+            wizard->assignFixtureToGroup(barBox, id);
+        wizard->setGroupSelected(barBox, true);
+    }
 
     wizard->autoDetectRoles();
     CHECK(wizard->canGoNext(), "wizard has selected groups");
@@ -169,7 +218,7 @@ int main(int argc, char *argv[])
                           << (f ? f->name() + " [" + Function::typeToString(f->type()) + "]" : QString("MISSING"));
     }
 
-    CHECK(manifest.groups.count() == 2, "manifest has both groups");
+    CHECK(manifest.groups.count() == expectedGroups, "manifest has every group");
     CHECK(manifest.items.isEmpty() == false, "manifest has wizard effects");
 
     bool allExist = true, movementIsCollection = false, hasMatrix = false;
@@ -187,7 +236,8 @@ int main(int argc, char *argv[])
             hasMatrix = true;
     }
     CHECK(allExist, "every manifest item points to an existing Function");
-    CHECK(movementIsCollection, "Circle Chase is recorded as its top level Collection");
+    if (barsOnly == false)
+        CHECK(movementIsCollection, "Circle Chase is recorded as its top level Collection");
     CHECK(hasMatrix, "Split Color is recorded as a Chaser that exists in the project");
 
     CHECK(director->hasRules(), "Director has rules after the wizard");
@@ -197,8 +247,14 @@ int main(int argc, char *argv[])
                           << "sections [" + rule.toMap().value("sections").toString() + "]"
                           << "looks" << rule.toMap().value("looks").toInt();
 
-    /* Run the wizard again: nothing must pile up in the Director */
     int rulesFirst = director->rulesCount();
+
+    if (savePath.isEmpty() == false)
+    {
+        QFile::remove(savePath);
+        CHECK(app.saveWorkspace(savePath), "project saved to " + savePath);
+        CHECK(QFile::exists(savePath), "project file exists");
+    }
 
     /* The panel, through the toolbar button's Loader */
     QQuickItem *root = app.rootObject();
@@ -224,7 +280,10 @@ int main(int argc, char *argv[])
             qInfo().noquote() << "  layer" << layers.at(l).toMap().value("name").toString() << ":"
                               << layers.at(l).toMap().value("functions").toString();
 
-        CHECK(layers.at(DirectorEngine::Base).toMap().value("count").toInt() == 2, "Base: one wash scene per group");
+        CHECK(layers.at(DirectorEngine::Base).toMap().value("count").toInt() == expectedGroups, "Base: one wash scene per group");
+        if (bars.isEmpty() == false)
+            CHECK(layers.at(DirectorEngine::Movement).toMap().value("functions").toString().contains("Tilt sweep"),
+                  "the bars get a tilt sweep on the Movement layer");
         CHECK(layers.at(DirectorEngine::Movement).toMap().value("count").toInt() >= 1, "Movement layer is running");
         CHECK(layers.at(DirectorEngine::Rhythm).toMap().value("count").toInt() >= 1, "Rhythm layer is running");
 
@@ -235,7 +294,7 @@ int main(int argc, char *argv[])
                 running++;
         }
         qInfo() << "functions running:" << running;
-        CHECK(running >= 4, "Functions are really running in the engine");
+        CHECK(running >= 3, "Functions are really running in the engine");
 
         // The panel must have been created by the Loader in MainView
         bool panelFound = false;

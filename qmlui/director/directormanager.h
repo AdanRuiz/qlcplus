@@ -219,6 +219,15 @@ private:
 
     quint32 findOrCreatePalette(int type, const QString &name, const QVariantList &values, bool reuse);
     quint32 makeScene(const QString &name, quint32 groupId, const QList<quint32> &palettes);
+
+    /** Build a slow tilt sweep for the fixtures of $groupId that can tilt but
+     *  not pan (motorised bars). Returns invalidId() when there are none. */
+    quint32 makeTiltSweep(const QString &groupName, quint32 groupId);
+
+    /** Append a line to the file named by the QLCPLUS_DIRECTOR_LOG
+     *  environment variable. Does nothing when it is not set. */
+    void log(const QString &text) const;
+    void logLook() const;
     void pushDemoStep();
 
 private:
@@ -255,6 +264,10 @@ private:
 
     /* Starts deferred by one timer tick, to let the stops happen first */
     QList<QPair<int, quint32> > m_pendingStarts;
+
+    /* Optional trace file, see log() */
+    QString m_logPath;
+    int m_beatCount;
 
     /* Demo */
     QTimer m_demoTimer;

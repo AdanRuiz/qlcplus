@@ -64,8 +64,13 @@ LINK=$(ninja -t commands qlcplus5 | tail -1 | \
     sed "s#qmlui/CMakeFiles/qlcplus5.dir/main.cpp.o#$WORK/e2e.o#g; s#-o qmlui/qlcplus5#-o $WORK/e2e#g")
 bash -c "$LINK" 2>&1 | grep "error"
 [ -x "$WORK/e2e" ] || fail "end to end build"
-(cd "$BUILD/qmlui" && QT_QPA_PLATFORM=offscreen timeout 60 "$WORK/e2e" > "$WORK/e2e.log" 2>&1) || fail "end to end run (see $WORK/e2e.log)"
+BAR=$T/data/SteelPro-1030-Bar-43Ch.qxf
+(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR QLCPLUS_DIRECTOR_LOG="$WORK/director.log"     QT_QPA_PLATFORM=offscreen timeout 60 "$WORK/e2e" > "$WORK/e2e.log" 2>&1) || fail "end to end run (see $WORK/e2e.log)"
 grep "^FAIL\|E2E\|  layer\|signal" "$WORK/e2e.log"
+
+echo "== End to end: a rig of motorised bars only, project saved"
+(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/bars.qxw"     QT_QPA_PLATFORM=offscreen timeout 60 "$WORK/e2e" > "$WORK/e2e-bars.log" 2>&1) || fail "bars only run (see $WORK/e2e-bars.log)"
+grep "^FAIL\|E2E\|  layer\|  rule\|signal" "$WORK/e2e-bars.log"
 
 echo "== Panel: QML warnings and screenshot"
 cd "$WORK" || exit 1

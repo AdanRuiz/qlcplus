@@ -17,7 +17,9 @@
 
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
+#include <QDateTime>
 #include <QDebug>
+#include <QFile>
 
 #include "directormanager.h"
 #include "vertexavchannels.h"
@@ -25,6 +27,10 @@
 #include "functionparent.h"
 #include "qlccapability.h"
 #include "fixturegroup.h"
+#include "chaserstep.h"
+#include "qlcchannel.h"
+#include "fixture.h"
+#include "chaser.h"
 #include "stagewizard.h"
 #include "mastertimer.h"
 #include "inputpatch.h"
@@ -115,6 +121,8 @@ DirectorManager::DirectorManager(Doc *doc, QObject *parent)
     , m_hasDownbeat(false)
     , m_gotInput(false)
     , m_paletteDirty(false)
+    , m_logPath(qEnvironmentVariable("QLCPLUS_DIRECTOR_LOG"))
+    , m_beatCount(0)
     , m_demoBpm(128)
     , m_demoBeat(0)
     , m_demoStep(-1)
@@ -137,6 +145,41 @@ DirectorManager::DirectorManager(Doc *doc, QObject *parent)
 
     m_demoTimer.setTimerType(Qt::PreciseTimer);
     connect(&m_demoTimer, SIGNAL(timeout()), this, SLOT(slotDemoTick()));
+
+    log("started");
+}
+
+void DirectorManager::log(const QString &text) const
+{
+    if (m_logPath.isEmpty())
+        return;
+
+    QFile file(m_logPath);
+    if (file.open(QIODevice::Append | QIODevice::Text) == false)
+        return;
+
+    QString line = QDateTime::currentDateTime().toString("HH:mm:ss.zzz") + " " + text + "\n";
+    file.write(line.toUtf8());
+}
+
+void DirectorManager::logLook() const
+{
+    if (m_logPath.isEmpty())
+        return;
+
+    QStringList parts;
+    for (int l = 0; l < DirectorEngine::LayerCount; l++)
+    {
+        QStringList names;
+        foreach (quint32 fid, m_engine.layerBundle(l))
+        {
+            Function *f = m_doc->function(fid);
+            names << (f != nullptr ? f->name() : QString::number(fid));
+        }
+        parts << DirectorEngine::layerName(l) + "=[" + names.join(" + ") + "]";
+    }
+    log(QString("look rule=\"%1\" section=%2 intensity=%3 %4")
+            .arg(m_engine.activeRuleName(), m_engine.section(), m_engine.intensity(), parts.join(" ")));
 }
 
 DirectorManager::~DirectorManager()
@@ -501,7 +544,10 @@ void DirectorManager::slotInputValueChanged(quint32 universe, quint32 channel, u
     m_gotInput = true;
     m_lastInput.restart();
     if (wasConnected == false)
+    {
+        log(QString("input connected: universe %1, plugin \"%2\"").arg(universe + 1).arg(patch->pluginName()));
         emit musicChanged();
+    }
 
     handleChannel(channel, value);
 }
@@ -515,6 +561,9 @@ void DirectorManager::handleChannel(quint32 channel, uchar value)
         if (value == 0)
             return;
         m_lastBeat.restart();
+        m_beatCount++;
+        if ((m_beatCount % 16) == 0)
+            log(QString("beats=%1 bpm=%2 energy=%3").arg(m_beatCount).arg(m_bpm).arg(m_energy));
         if (m_hasDownbeat == false && m_beatInBar >= 4)
         {
             m_beatInBar = 0;
@@ -558,6 +607,7 @@ void DirectorManager::handleChannel(quint32 channel, uchar value)
         if (value == 0)
             return;
         m_engine.setSection(sectionRoles().at(int(channel - SectionBase)));
+        log("section " + m_engine.detectedSection());
         emit musicChanged();
     }
     else if (channel == StrobeOk)
@@ -570,6 +620,7 @@ void DirectorManager::handleChannel(quint32 channel, uchar value)
         if (value == 0)
             return;
         m_engine.setIntensity(intensities().at(int(channel - IntensityBase)));
+        log("intensity " + m_engine.detectedIntensity());
         emit musicChanged();
     }
     else if (channel >= MoodBase && channel < MoodBase + quint32(moods().count()))
@@ -603,8 +654,11 @@ void DirectorManager::handleBar()
         return;
 
     applyPalette();
-    execute(m_engine.bar());
+    const QList<DirectorEngine::Action> actions = m_engine.bar();
+    execute(actions);
     applyBaseLevel();
+    if (actions.isEmpty() == false)
+        logLook();
     emit lookChanged();
 }
 
@@ -614,8 +668,11 @@ void DirectorManager::evaluateNow()
         return;
 
     applyPalette();
-    execute(m_engine.evaluate());
+    const QList<DirectorEngine::Action> actions = m_engine.evaluate();
+    execute(actions);
     applyBaseLevel();
+    if (actions.isEmpty() == false)
+        logLook();
     emit lookChanged();
 }
 
@@ -636,6 +693,8 @@ void DirectorManager::slotWatchdog()
     if (now != lastConnected)
     {
         lastConnected = now;
+        if (now == false)
+            log("input lost");
         emit musicChanged();
     }
 }
@@ -841,6 +900,92 @@ quint32 DirectorManager::makeScene(const QString &name, quint32 groupId, const Q
     return scene->id();
 }
 
+quint32 DirectorManager::makeTiltSweep(const QString &groupName, quint32 groupId)
+{
+    FixtureGroup *group = m_doc->fixtureGroup(groupId);
+    if (group == nullptr)
+        return Function::invalidId();
+
+    // (fixture, tilt channel) of every fixture that tilts but does not pan.
+    // The channel is looked up on the fixture, not on its heads: a pixel bar
+    // declares one head per LED and its single tilt motor belongs to none.
+    QList<QPair<quint32, quint32> > tilts;
+    foreach (quint32 fxID, group->fixtureList())
+    {
+        Fixture *fxi = m_doc->fixture(fxID);
+        if (fxi == nullptr)
+            continue;
+
+        bool pan = false;
+        quint32 tilt = QLCChannel::invalid();
+        for (quint32 ch = 0; ch < fxi->channels(); ch++)
+        {
+            const QLCChannel *channel = fxi->channel(ch);
+            if (channel == nullptr)
+                continue;
+            if (channel->group() == QLCChannel::Pan)
+                pan = true;
+            else if (channel->group() == QLCChannel::Tilt && channel->controlByte() == QLCChannel::MSB &&
+                     tilt == QLCChannel::invalid())
+                tilt = ch;
+        }
+
+        if (pan == false && tilt != QLCChannel::invalid())
+            tilts.append(QPair<quint32, quint32>(fxID, tilt));
+    }
+
+    if (tilts.isEmpty())
+        return Function::invalidId();
+
+    // Two ends of the sweep, around the centre of the travel
+    const uchar ends[2] = { 72, 184 };
+    const char *endNames[2] = { QT_TR_NOOP("%1 - Tilt down"), QT_TR_NOOP("%1 - Tilt up") };
+
+    Chaser *chaser = new Chaser(m_doc);
+    chaser->setName(tr("%1 - Tilt sweep").arg(groupName));
+    chaser->setFadeInMode(Chaser::Common);
+    chaser->setFadeOutMode(Chaser::Common);
+    chaser->setDurationMode(Chaser::Common);
+    chaser->setFadeInSpeed(1800);
+    chaser->setFadeOutSpeed(0);
+    chaser->setDuration(2000);
+
+    for (int i = 0; i < 2; i++)
+    {
+        Scene *scene = new Scene(m_doc);
+        scene->setName(tr(endNames[i]).arg(groupName));
+        for (int t = 0; t < tilts.count(); t++)
+        {
+            scene->addFixture(tilts.at(t).first);
+            scene->setValue(tilts.at(t).first, tilts.at(t).second, ends[i]);
+        }
+        scene->setPath(DIRECTOR_FOLDER);
+        if (m_doc->addFunction(scene) == false)
+        {
+            delete scene;
+            delete chaser;
+            return Function::invalidId();
+        }
+        m_ownFunctions.append(scene->id());
+
+        ChaserStep step(scene->id());
+        step.fadeIn = 1800;
+        step.hold = 200;
+        step.fadeOut = 0;
+        chaser->addStep(step);
+    }
+
+    chaser->setPath(DIRECTOR_FOLDER);
+    if (m_doc->addFunction(chaser) == false)
+    {
+        delete chaser;
+        return Function::invalidId();
+    }
+
+    m_ownFunctions.append(chaser->id());
+    return chaser->id();
+}
+
 void DirectorManager::clearRules()
 {
     bool wasEnabled = m_enabled;
@@ -954,6 +1099,16 @@ void DirectorManager::setupFromManifest(const DirectorManifest &manifest, bool e
             if (s != Function::invalidId())
                 strobes << s;
         }
+    }
+
+    /* Motorised bars: they tilt but do not pan, so the wizard gives them no
+     * movement effect. They get a slow tilt sweep instead. */
+    Bundle tiltSweeps;
+    foreach (const DirectorManifest::Group &grp, manifest.groups)
+    {
+        quint32 sweep = makeTiltSweep(grp.name, grp.id);
+        if (sweep != Function::invalidId())
+            tiltSweeps << sweep;
     }
 
     /* What the wizard generated, by effect */
@@ -1088,6 +1243,28 @@ void DirectorManager::setupFromManifest(const DirectorManifest &manifest, bool e
         rules << rule;
     }
 
+    // The bars sweep along with whatever the moving heads do, and on their
+    // own when there are no moving heads. They rest when the music does.
+    if (tiltSweeps.isEmpty() == false)
+    {
+        for (int r = 0; r < rules.count(); r++)
+        {
+            if (rules.at(r).sections.contains("silence"))
+                continue;
+
+            QList<Bundle> &movement = rules[r].layers[DirectorEngine::Movement];
+            if (movement.isEmpty())
+            {
+                movement.append(tiltSweeps);
+            }
+            else
+            {
+                for (int b = 0; b < movement.count(); b++)
+                    movement[b] << tiltSweeps;
+            }
+        }
+    }
+
     // A rule with nothing to run would only produce a blackout
     QList<DirectorEngine::Rule> usable;
     foreach (const DirectorEngine::Rule &rule, rules)
@@ -1098,6 +1275,8 @@ void DirectorManager::setupFromManifest(const DirectorManifest &manifest, bool e
 
     m_engine.setRules(usable);
     m_doc->setModified();
+    log(QString("rules built: %1 rules, %2 groups, %3 wizard effects, %4 tilt sweeps")
+            .arg(usable.count()).arg(manifest.groups.count()).arg(manifest.items.count()).arg(tiltSweeps.count()));
 
     emit rulesChanged();
     emit lookChanged();
