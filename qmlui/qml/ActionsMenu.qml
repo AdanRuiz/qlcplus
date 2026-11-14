@@ -556,6 +556,20 @@ Popup
 
         ContextMenuEntry
         {
+            id: startupConfig
+            imgSource: "qrc:/fileopen.svg"
+            entryText: qsTr("Project at startup")
+            onEntered: submenuItem = null
+            onClicked:
+            {
+                menuRoot.close()
+                startupProjectPopup.asNotice = false
+                startupProjectPopup.open()
+            }
+        }
+
+        ContextMenuEntry
+        {
             id: uiConfig
             imgSource: "qrc:/configure.svg"
             entryText: qsTr("UI Settings")

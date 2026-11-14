@@ -662,6 +662,34 @@ Rectangle
 
     PopupNetworkConnect { id: clientAccessPopup }
 
+    /** Which project is opened at startup: shown by itself to say that one
+      * has just been opened, and from the Actions menu as a preference */
+    PopupStartupProject { id: startupProjectPopup }
+
+    function showStartupNotice()
+    {
+        if (qlcplus.startupLoadedFile === "" || qlcplus.startupNotice === false ||
+            qlcplus.accessMask === App.AC_VCControl)
+            return
+        startupProjectPopup.asNotice = true
+        startupProjectPopup.open()
+    }
+
+    Connections
+    {
+        target: qlcplus
+        function onStartupLoadedFileChanged() { startupNoticeTimer.restart() }
+    }
+
+    // the project is opened before the window is on screen: wait for it
+    Timer
+    {
+        id: startupNoticeTimer
+        interval: 1500
+        running: qlcplus.startupLoadedFile !== ""
+        onTriggered: mainView.showStartupNotice()
+    }
+
     /** Menu to open/load/save a project */
     ActionsMenu
     {

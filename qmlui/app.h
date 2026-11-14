@@ -62,6 +62,10 @@ class App final : public QQuickView
     Q_PROPERTY(bool docModified READ docModified NOTIFY docModifiedChanged)
     Q_PROPERTY(QStringList recentFiles READ recentFiles NOTIFY recentFilesChanged)
     Q_PROPERTY(QString workingPath READ workingPath WRITE setWorkingPath NOTIFY workingPathChanged)
+    Q_PROPERTY(int startupMode READ startupMode WRITE setStartupMode NOTIFY startupChanged)
+    Q_PROPERTY(QString startupFile READ startupFile WRITE setStartupFile NOTIFY startupChanged)
+    Q_PROPERTY(bool startupNotice READ startupNotice WRITE setStartupNotice NOTIFY startupChanged)
+    Q_PROPERTY(QString startupLoadedFile READ startupLoadedFile NOTIFY startupLoadedFileChanged)
     Q_PROPERTY(int accessMask READ accessMask WRITE setAccessMask NOTIFY accessMaskChanged)
     Q_PROPERTY(int runningFunctionsCount READ runningFunctionsCount NOTIFY runningFunctionsCountChanged)
 
@@ -106,6 +110,15 @@ public:
         ImportMode
     };
     Q_ENUM(FileDialogOpModes)
+
+    /** Which project is opened when the application starts */
+    enum StartupModes
+    {
+        StartupLast = 0,    ///< the project used last (default)
+        StartupFile,        ///< always the same project, see startupFile
+        StartupNone         ///< an empty project
+    };
+    Q_ENUM(StartupModes)
 
     enum DragItemType
     {
@@ -350,6 +363,21 @@ public:
     /** Open the file from last session */
     void loadLastWorkspace();
 
+    /** Open the project the user wants at startup: the one used last
+     *  unless the preference says otherwise. Meant to be called once,
+     *  when no project was asked for on the command line. */
+    void loadStartupWorkspace();
+
+    int startupMode() const;
+    void setStartupMode(int mode);
+    QString startupFile() const;
+    void setStartupFile(QString fileName);
+    /** Whether the user is told which project was opened at startup */
+    bool startupNotice() const;
+    void setStartupNotice(bool show);
+    /** The project opened by loadStartupWorkspace(), empty when none was */
+    QString startupLoadedFile() const;
+
     /** Get/Set the path currently used by QLC+ to access projects and resources */
     QString workingPath() const;
     void setWorkingPath(QString workingPath);
@@ -399,6 +427,8 @@ private:
 signals:
     void recentFilesChanged();
     void workingPathChanged(QString workingPath);
+    void startupChanged();
+    void startupLoadedFileChanged();
 
 public slots:
     void slotLoadDocFromMemory(QByteArray &xmlData);
@@ -413,6 +443,7 @@ private:
     QString m_fileName;
     QStringList m_recentFiles;
     QString m_workingPath;
+    QString m_startupLoadedFile;
 
     /*********************************************************************
      * Import project

@@ -66,7 +66,7 @@ QT_QPA_PLATFORM=offscreen timeout 120 "$BIN/directormanager_test$EXE" -o "$WORK/
 grep "FAIL\|Loc:\|Totals\|signal" "$WORK/manager.txt"
 
 echo "== End to end: real Stage Wizard + Director + panel, inside the application"
-BAR=$T/data/SteelPro-1030-Bar-43Ch.qxf
+BAR=$SRC/resources/fixtures/SteelPro/SteelPro-1030-Bar-43Ch.qxf
 (cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR QLCPLUS_DIRECTOR_LOG="$WORK/director.log" \
     QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e.log" 2>&1) || fail "end to end run (see $WORK/e2e.log)"
 # -a: the function names carry non-ASCII dashes
@@ -81,7 +81,7 @@ echo "== End to end: a rig of motorised bars only, project saved"
 grep -a "^FAIL\|E2E\|  layer\|  rule\|signal" "$WORK/e2e-bars.log"
 
 echo "== End to end: two SteelPro 1030 bars, two SteelPro Novas and two LED pars, project saved"
-NOVA=$T/data/SteelPro-Nova.qxf
+NOVA=$SRC/resources/fixtures/SteelPro/SteelPro-Nova.qxf
 PAR=$T/data/Generic-AH40-DH41-18x18W-RGBW-Par.qxf
 (cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_NOVA_DEF=$NOVA DIRECTOR_E2E_PAR_DEF=$PAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/steelpro-rig.qxw" \
     QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e-steelpro.log" 2>&1) || fail "SteelPro rig run (see $WORK/e2e-steelpro.log)"

@@ -77,6 +77,9 @@
 #define SETTINGS_GEOMETRY      QStringLiteral("workspace/windowrect")
 #define SETTINGS_WORKINGPATH   QStringLiteral("workspace/workingpath")
 #define SETTINGS_RECENTFILE    QStringLiteral("workspace/recent")
+#define SETTINGS_STARTUPMODE   QStringLiteral("workspace/startupmode")
+#define SETTINGS_STARTUPFILE   QStringLiteral("workspace/startupfile")
+#define SETTINGS_STARTUPNOTICE QStringLiteral("workspace/startupnotice")
 #define KXMLQLCWorkspaceWindow QStringLiteral("CurrentWindow")
 
 #define MAX_RECENT_FILES    10
@@ -939,6 +942,92 @@ void App::loadLastWorkspace()
         return;
 
     loadWorkspace(m_recentFiles.first());
+}
+
+void App::loadStartupWorkspace()
+{
+    QString fileName;
+
+    switch (startupMode())
+    {
+        case StartupNone:
+        break;
+        case StartupFile:
+            fileName = startupFile();
+        break;
+        case StartupLast:
+        default:
+            if (m_recentFiles.isEmpty() == false)
+                fileName = m_recentFiles.first();
+        break;
+    }
+
+    // A project that was moved or deleted is not an error at startup:
+    // the application just opens empty, as it always did
+    if (fileName.isEmpty() || QFile::exists(fileName) == false)
+        return;
+
+    if (loadWorkspace(fileName))
+    {
+        m_startupLoadedFile = fileName;
+        emit startupLoadedFileChanged();
+    }
+}
+
+int App::startupMode() const
+{
+    QSettings settings;
+    int mode = settings.value(SETTINGS_STARTUPMODE, int(StartupLast)).toInt();
+    return (mode < StartupLast || mode > StartupNone) ? int(StartupLast) : mode;
+}
+
+void App::setStartupMode(int mode)
+{
+    if (mode == startupMode())
+        return;
+
+    QSettings settings;
+    settings.setValue(SETTINGS_STARTUPMODE, mode);
+    emit startupChanged();
+}
+
+QString App::startupFile() const
+{
+    QSettings settings;
+    return settings.value(SETTINGS_STARTUPFILE).toString();
+}
+
+void App::setStartupFile(QString fileName)
+{
+    if (fileName.startsWith("file:"))
+        fileName = QUrl(fileName).toLocalFile();
+    if (fileName == startupFile())
+        return;
+
+    QSettings settings;
+    settings.setValue(SETTINGS_STARTUPFILE, fileName);
+    emit startupChanged();
+}
+
+bool App::startupNotice() const
+{
+    QSettings settings;
+    return settings.value(SETTINGS_STARTUPNOTICE, true).toBool();
+}
+
+void App::setStartupNotice(bool show)
+{
+    if (show == startupNotice())
+        return;
+
+    QSettings settings;
+    settings.setValue(SETTINGS_STARTUPNOTICE, show);
+    emit startupChanged();
+}
+
+QString App::startupLoadedFile() const
+{
+    return m_startupLoadedFile;
 }
 
 QString App::workingPath() const

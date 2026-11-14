@@ -1943,6 +1943,10 @@
     <F n="Starway-TourKolor" m="TourKolor"/>
     <F n="Starway-UrbanKolor" m="UrbanKolor"/>
   </M>
+  <M n="SteelPro">
+    <F n="SteelPro-1030-Bar-43Ch" m="1030 Bar 43Ch"/>
+    <F n="SteelPro-Nova" m="Nova"/>
+  </M>
   <M n="Stellar_Labs">
     <F n="Stellar-Labs-ECO-LED-PAR56" m="ECO LED PAR56"/>
     <F n="Stellar-Labs-LED-PAR38-RGB" m="LED PAR38 RGB (555-11410)"/>

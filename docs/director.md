@@ -124,7 +124,7 @@ Los overrides (forzados, pin, off, hold) son estado en vivo y no se guardan.
 - Los EFX y varios chasers del wizard usan valores por fixture. Al cambiar de rig hay que volver a pasar el wizard.
 - Los textos nuevos están en inglés, sin traducir.
 - Las capas se suman: un chaser de color de la capa Rhythm y el color de la capa Base escriben en los mismos canales y se mezclan por valor más alto.
-- La demostración sí envía DMX a las salidas configuradas; no hay todavía un interruptor para evitarlo.
+- La demostración envía DMX a las salidas configuradas, a propósito: sirve para ver el show en los equipos reales sin música.
 
 ## Cómo se probó
 
