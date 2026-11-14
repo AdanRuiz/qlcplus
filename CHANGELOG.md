@@ -33,6 +33,12 @@ Based on the QLC+ 5.3.0 engine.
   blackout, strobes, laser, colour) can also be set from the rules file.
 - When a project comes back with other rules (run through the wizard
   again), its rules file is kept as `.bak` and written again.
+- The application opens the project used last when it starts, and says so
+  in a notice that can be switched off. "Project at startup", in the
+  Actions menu, chooses between the last project, always the same one, or
+  an empty one.
+- SteelPro 1030 Bar and SteelPro Nova fixture definitions are installed
+  with the application, under `resources/fixtures/SteelPro`.
 - Optional log of the health of the machine (`--sysmon`): memory,
   processor load and temperatures, to find out why a computer hangs or
   powers off during a show.

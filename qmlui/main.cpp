@@ -250,6 +250,9 @@ int main(int argc, char *argv[])
     // open last file
     if (parser.isSet(openLastOption))
         qlcplusApp.loadLastWorkspace();
+    // nothing asked for: what the user wants to find at startup
+    else if (filename.isEmpty())
+        qlcplusApp.loadStartupWorkspace();
 
     if ((enableWebAccess || enableNativeServer) && qlcplusApp.networkManager() != nullptr)
     {
