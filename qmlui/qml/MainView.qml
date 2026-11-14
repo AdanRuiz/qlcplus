@@ -666,6 +666,9 @@ Rectangle
       * has just been opened, and from the Actions menu as a preference */
     PopupStartupProject { id: startupProjectPopup }
 
+    /** Which graphics card draws the application */
+    PopupGraphicsCard { id: graphicsCardPopup }
+
     function showStartupNotice()
     {
         if (qlcplus.startupLoadedFile === "" || qlcplus.startupNotice === false ||

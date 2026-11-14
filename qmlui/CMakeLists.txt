@@ -56,6 +56,7 @@ set(SRC_FILES
     showmanager.cpp showmanager.h
     simpledesk.cpp simpledesk.h
     systemmonitor.cpp systemmonitor.h
+    graphicscard.cpp graphicscard.h
     tardis/networkmanager.cpp tardis/networkmanager.h
     tardis/networkpacketizer.cpp tardis/networkpacketizer.h
     tardis/simplecrypt.cpp tardis/simplecrypt.h
@@ -242,6 +243,8 @@ endif()
 # Memory and thermal zone counters read by the system monitor
 if(WIN32)
     target_link_libraries(${module_name} PRIVATE pdh psapi)
+    # Names of the graphics cards, for the preference of which one to use
+    target_link_libraries(${module_name} PRIVATE dxgi dxguid)
 endif()
 
 if(lupdate_only)

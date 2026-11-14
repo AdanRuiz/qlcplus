@@ -66,6 +66,9 @@ class App final : public QQuickView
     Q_PROPERTY(QString startupFile READ startupFile WRITE setStartupFile NOTIFY startupChanged)
     Q_PROPERTY(bool startupNotice READ startupNotice WRITE setStartupNotice NOTIFY startupChanged)
     Q_PROPERTY(QString startupLoadedFile READ startupLoadedFile NOTIFY startupLoadedFileChanged)
+    Q_PROPERTY(int graphicsCard READ graphicsCard WRITE setGraphicsCard NOTIFY graphicsCardChanged)
+    Q_PROPERTY(QStringList graphicsCardNames READ graphicsCardNames CONSTANT)
+    Q_PROPERTY(QString graphicsRenderer READ graphicsRenderer NOTIFY graphicsRendererChanged)
     Q_PROPERTY(int accessMask READ accessMask WRITE setAccessMask NOTIFY accessMaskChanged)
     Q_PROPERTY(int runningFunctionsCount READ runningFunctionsCount NOTIFY runningFunctionsCountChanged)
 
@@ -378,6 +381,13 @@ public:
     /** The project opened by loadStartupWorkspace(), empty when none was */
     QString startupLoadedFile() const;
 
+    /** Graphics card the user wants, see GraphicsCard::Preference */
+    int graphicsCard() const;
+    void setGraphicsCard(int preference);
+    QStringList graphicsCardNames() const;
+    /** The card that is drawing right now, as the driver names it */
+    QString graphicsRenderer() const;
+
     /** Get/Set the path currently used by QLC+ to access projects and resources */
     QString workingPath() const;
     void setWorkingPath(QString workingPath);
@@ -429,6 +439,8 @@ signals:
     void workingPathChanged(QString workingPath);
     void startupChanged();
     void startupLoadedFileChanged();
+    void graphicsCardChanged();
+    void graphicsRendererChanged();
 
 public slots:
     void slotLoadDocFromMemory(QByteArray &xmlData);
@@ -444,6 +456,9 @@ private:
     QStringList m_recentFiles;
     QString m_workingPath;
     QString m_startupLoadedFile;
+    QString m_graphicsRenderer;
+    /* Frames drawn since the last line of the optional frame rate log */
+    int m_frameCount = 0;
 
     /*********************************************************************
      * Import project

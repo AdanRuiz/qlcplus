@@ -98,6 +98,7 @@
     <file alias="PopupRenameItems.qml">qml/popup/PopupRenameItems.qml</file>
     <file alias="PopupDMXDump.qml">qml/popup/PopupDMXDump.qml</file>
     <file alias="PopupStartupProject.qml">qml/popup/PopupStartupProject.qml</file>
+    <file alias="PopupGraphicsCard.qml">qml/popup/PopupGraphicsCard.qml</file>
     <file alias="PopupMonitor.qml">qml/popup/PopupMonitor.qml</file>
     <file alias="PopupNetworkClient.qml">qml/popup/PopupNetworkClient.qml</file>
     <file alias="PopupNetworkConnect.qml">qml/popup/PopupNetworkConnect.qml</file>
