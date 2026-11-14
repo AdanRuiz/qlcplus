@@ -33,6 +33,9 @@ class InputOutputMap;
 class QLCInputProfile;
 class InputProfileEditor;
 
+/** Where the beat comes from, as the user last chose it on this computer */
+#define SETTINGS_BEAT_TYPE QStringLiteral("inputmap/beattype")
+
 class InputOutputManager final : public PreviewContext
 {
     Q_OBJECT
@@ -183,6 +186,7 @@ signals:
 private:
     void clearInputList();
     void clearOutputList();
+    void saveDefaultPatch();
 
     /*********************************************************************
      * Input Profiles

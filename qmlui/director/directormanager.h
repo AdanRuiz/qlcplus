@@ -18,6 +18,9 @@
 #ifndef DIRECTORMANAGER_H
 #define DIRECTORMANAGER_H
 
+#include <QFileSystemWatcher>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QElapsedTimer>
 #include <QVariantList>
 #include <QStringList>
@@ -55,6 +58,8 @@ class DirectorManager final : public QObject
     Q_PROPERTY(bool hasRules READ hasRules NOTIFY rulesChanged)
     Q_PROPERTY(int rulesCount READ rulesCount NOTIFY rulesChanged)
     Q_PROPERTY(QVariantList rules READ rulesModel NOTIFY rulesChanged)
+    Q_PROPERTY(QString rulesFile READ rulesFile NOTIFY rulesFileChanged)
+    Q_PROPERTY(QString rulesFileError READ rulesFileError NOTIFY rulesFileChanged)
 
     Q_PROPERTY(QString source READ source NOTIFY musicChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY musicChanged)
@@ -222,12 +227,55 @@ public:
      * Load & Save
      *********************************************************************/
 public:
+    /*********************************************************************
+     * Rules file
+     *********************************************************************/
+public:
+    /** Tell the Director which project it belongs to. The rules live next
+     *  to it as "<project>.director.json", a text file that names the
+     *  Functions of every look. It is read when the project is opened and
+     *  again every time it is saved from an editor, while the show runs:
+     *  tuning the behaviour needs no build and no restart.
+     *
+     *  The file also carries the overrides of the operator (forced section
+     *  and intensity, hold, blackout, strobes, laser, colour). They are
+     *  applied when that part of the file changes, so that what is done
+     *  on the panel afterwards is not undone by an edit of the rules.
+     *
+     *  When the file does not exist yet it is written from the rules of
+     *  the project. An empty $projectFile forgets the file.
+     *
+     *  The file remembers which rules of the project it was written for.
+     *  A project that comes back with other rules (run through the wizard
+     *  again, or built anew) is newer than the file: the file is kept as
+     *  ".bak" and written again from the project, so nobody has to delete
+     *  it by hand. Telling the same project file again, as saving does,
+     *  makes the file belong to the rules that were just saved. */
+    void setProjectFile(const QString &projectFile);
+
+    QString rulesFile() const;
+    /** What is wrong with the rules file, empty when it was read fine */
+    QString rulesFileError() const;
+
+private:
+    bool readRulesFile();
+    void writeRulesFile();
+    void watchRulesFile();
+    void stampRulesFile();
+    QJsonArray rulesToJson() const;
+    QString rulesStamp() const;
+    QJsonObject overridesToJson() const;
+    void applyOverrides(const QJsonObject &overrides);
+    quint32 functionByName(const QString &name) const;
+
+public:
     bool loadXML(QXmlStreamReader &root);
     bool saveXML(QXmlStreamWriter *doc) const;
 
 signals:
     void enabledChanged();
     void rulesChanged();
+    void rulesFileChanged();
     void musicChanged();
     void lookChanged();
     void overridesChanged();
@@ -241,6 +289,8 @@ private slots:
     void slotWatchdog();
     void slotDemoTick();
     void slotStartPending();
+    void slotRulesFileChanged();
+    void slotRulesEdited();
 
 private:
     /** Entry point of the musical information, real or simulated */
@@ -326,6 +376,18 @@ private:
 
     /* Starts deferred by one timer tick, to let the stops happen first */
     QList<QPair<int, quint32> > m_pendingStarts;
+
+    /* Rules file, see setProjectFile() */
+    QString m_rulesFile;
+    QString m_rulesFileError;
+    QByteArray m_rulesFileData;
+    /* What identifies the rules of the project as it is on disk */
+    QString m_projectStamp;
+    QJsonArray m_rulesFileRules;
+    QJsonObject m_rulesFileOverrides;
+    QFileSystemWatcher m_rulesWatcher;
+    QTimer m_rulesReload;
+    bool m_readingRulesFile;
 
     /* Optional trace file, see log() */
     QString m_logPath;

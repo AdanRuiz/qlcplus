@@ -180,7 +180,8 @@ static quint32 novaScene(Doc *doc, const QList<quint32> &novas, const QString &n
  * through the front and two yellow LEDs in the head that are its strobe,
  * separate from the beams:
  *
- *  - the head spins and the laser stays on whenever there is movement
+ *  - the head spins whenever there is movement, and the laser comes on
+ *    with it in the loud sections only
  *  - the yellow LEDs strobe on their own in the loud sections
  *  - one more movement to choose from: a 5 second sweep of about 80 degrees
  *    of pan, the tilt rising at the centre and dropping at both ends
@@ -194,7 +195,7 @@ static void addNovaShow(Doc *doc, DirectorManager *director, const QList<quint32
 
     // The fixture does the flashing: the strobe channel only sets how fast
     quint32 strobe = novaScene(doc, novas, "Novas - Yellow strobe",
-                               QList<NovaValue>() << NovaValue("Gold light", 255) << NovaValue("Yellow strobe", 150));
+                               QList<NovaValue>() << NovaValue("Gold light", 255) << NovaValue("Strobe", 255));
 
     // x = cos(t), y = -cos(2t): one pan sweep and back per cycle, the tilt
     // highest when crossing the centre
@@ -225,7 +226,11 @@ static void addNovaShow(Doc *doc, DirectorManager *director, const QList<quint32
 
     CHECK(director->addLook(DirectorEngine::Movement, look) > 0, "Nova arc sweep is one more movement");
     CHECK(director->addCompanion(DirectorEngine::Movement, spin) > 0, "Nova spin goes along with the movement");
-    CHECK(director->addCompanion(DirectorEngine::Movement, laser) > 0, "Nova laser goes along with the movement");
+    // The laser is for the loud parts: it stays off in the intro, the verse
+    // and the other quiet sections
+    CHECK(director->addCompanion(DirectorEngine::Movement, laser,
+                                 QStringList() << "chorus" << "build" << "drop") > 0,
+          "Nova laser goes along with the movement of the loud sections");
     CHECK(director->hasLaser(), "the Director knows the rig has a laser");
     CHECK(director->addCompanion(DirectorEngine::Rhythm, strobe,
                                  QStringList() << "chorus" << "build" << "drop") > 0,

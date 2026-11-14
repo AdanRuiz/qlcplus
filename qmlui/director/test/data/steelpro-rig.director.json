@@ -1,0 +1,308 @@
+{
+    "overrides": {
+        "blackout": false,
+        "color": "",
+        "hold": false,
+        "intensity": "",
+        "laser": "",
+        "section": "",
+        "strobeAllowed": true
+    },
+    "project": "5e1a5f87813a2672",
+    "rules": [
+        {
+            "bars": 0,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ]
+                ],
+                "Movement": [
+                ],
+                "Rhythm": [
+                ]
+            },
+            "name": "Silence",
+            "sections": [
+                "silence"
+            ]
+        },
+        {
+            "bars": 8,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ],
+                    [
+                        "Bars - Secondary",
+                        "Novas - Primary",
+                        "LED Pars - Secondary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Novas – Circle Chase",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ]
+                ],
+                "Rhythm": [
+                    [
+                        "Bars – Heartbeat",
+                        "Novas – Heartbeat",
+                        "LED Pars – Heartbeat"
+                    ]
+                ]
+            },
+            "name": "Calm",
+            "sections": [
+                "intro",
+                "outro",
+                "breakdown"
+            ]
+        },
+        {
+            "bars": 8,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ],
+                    [
+                        "Bars - Secondary",
+                        "Novas - Primary",
+                        "LED Pars - Secondary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Novas – Circle Chase",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ]
+                ],
+                "Rhythm": [
+                    [
+                        "Bars – Heartbeat",
+                        "Novas – Heartbeat",
+                        "LED Pars – Heartbeat"
+                    ]
+                ]
+            },
+            "name": "Verse",
+            "sections": [
+                "verse",
+                "bridge"
+            ]
+        },
+        {
+            "bars": 8,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Secondary",
+                        "Novas - Primary",
+                        "LED Pars - Secondary"
+                    ],
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ]
+                ],
+                "Rhythm": [
+                    [
+                        "Bars – Color Rainbow",
+                        "Novas – Color Rainbow",
+                        "LED Pars – Color Rainbow",
+                        "Novas - Yellow strobe"
+                    ]
+                ]
+            },
+            "name": "Chorus",
+            "sections": [
+                "chorus"
+            ]
+        },
+        {
+            "bars": 4,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ]
+                ],
+                "Rhythm": [
+                    [
+                        "Novas - Yellow strobe"
+                    ]
+                ]
+            },
+            "name": "Build",
+            "sections": [
+                "build"
+            ]
+        },
+        {
+            "bars": 4,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                    [
+                        "Novas - Strobe",
+                        "LED Pars - Strobe"
+                    ]
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ],
+                    [
+                        "Bars - Secondary",
+                        "Novas - Primary",
+                        "LED Pars - Secondary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Novas – Circle Chase",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin",
+                        "Novas - Laser"
+                    ]
+                ],
+                "Rhythm": [
+                    [
+                        "Bars – Split Color",
+                        "Novas – Split Color",
+                        "LED Pars – Split Color",
+                        "Novas - Yellow strobe"
+                    ]
+                ]
+            },
+            "name": "Drop",
+            "sections": [
+                "drop"
+            ]
+        },
+        {
+            "bars": 8,
+            "intensities": [
+            ],
+            "layers": {
+                "Accent": [
+                ],
+                "Base": [
+                    [
+                        "Bars - Primary",
+                        "Novas - Primary",
+                        "LED Pars - Primary"
+                    ],
+                    [
+                        "Bars - Secondary",
+                        "Novas - Primary",
+                        "LED Pars - Secondary"
+                    ]
+                ],
+                "Movement": [
+                    [
+                        "Novas – Circle Chase",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ],
+                    [
+                        "Novas – Position Centre",
+                        "Novas - Arc sweep",
+                        "Bars - Tilt sweep",
+                        "Novas - Spin"
+                    ]
+                ],
+                "Rhythm": [
+                ]
+            },
+            "name": "Default",
+            "sections": [
+            ]
+        }
+    ]
+}

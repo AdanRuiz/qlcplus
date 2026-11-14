@@ -51,7 +51,7 @@ if(qmlui)
     set(APPNAME "VertexAV Director")
     # The product has its own X.Y.Z version (see CHANGELOG.md). The version
     # of the QLC+ engine it is built on is kept apart: plugins check it.
-    set(APPVERSION "0.1.1")
+    set(APPVERSION "0.2.0")
     set(ENGINEVERSION "5.3.0")
     set(APPBINARY "qlcplus5")
     set(PLUGINSUBDIR "qlcplus5")

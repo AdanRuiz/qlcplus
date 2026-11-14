@@ -55,6 +55,7 @@ set(SRC_FILES
     scripteditor.cpp scripteditor.h
     showmanager.cpp showmanager.h
     simpledesk.cpp simpledesk.h
+    systemmonitor.cpp systemmonitor.h
     tardis/networkmanager.cpp tardis/networkmanager.h
     tardis/networkpacketizer.cpp tardis/networkpacketizer.h
     tardis/simplecrypt.cpp tardis/simplecrypt.h
@@ -236,6 +237,11 @@ if(ANDROID)
         z
         c++_shared
     )
+endif()
+
+# Memory and thermal zone counters read by the system monitor
+if(WIN32)
+    target_link_libraries(${module_name} PRIVATE pdh psapi)
 endif()
 
 if(lupdate_only)

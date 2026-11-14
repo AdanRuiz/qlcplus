@@ -18,6 +18,41 @@ This file covers what VertexAV Director adds or changes on top of the
 QLC+ engine it is built on. Changes that come from QLC+ itself are in
 [debian/changelog-v5](debian/changelog-v5).
 
+## [0.2.0] - Unreleased
+
+Based on the QLC+ 5.3.0 engine.
+
+### Added
+
+- Rules file: the rules of the Director live next to the project as
+  `<project>.director.json`, a text file that names the functions of every
+  look. The Director reads it again every time it is saved, while the show
+  runs, so tuning what happens in each section needs no restart. The panel
+  shows the name of the file, or what is wrong with it.
+- The overrides of the operator (forced section and intensity, hold,
+  blackout, strobes, laser, colour) can also be set from the rules file.
+- When a project comes back with other rules (run through the wizard
+  again), its rules file is kept as `.bak` and written again.
+- Optional log of the health of the machine (`--sysmon`): memory,
+  processor load and temperatures, to find out why a computer hangs or
+  powers off during a show.
+
+### Changed
+
+- The input and output patch and the source of the beat are remembered per
+  computer. A universe that a project leaves empty, and a new project, take
+  the last ones used instead of being left unplugged.
+- VertexAV Link leads the list of inputs.
+- SteelPro Nova: its strobe channel is the shutter of the beam, so the
+  wizard and the strobe button of the Director use it. It runs at full in
+  the loud sections, and the laser stays off in the quiet ones.
+
+### Fixed
+
+- Stage Wizard: a fixture takes one cell per head in its group. Two ten LED
+  bars pushed each other's LEDs out of the group, so scenes and matrices
+  running on it did not reach every LED.
+
 ## [0.1.1] - Unreleased
 
 Based on the QLC+ 5.3.0 engine.

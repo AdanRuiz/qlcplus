@@ -318,6 +318,19 @@ Rectangle
             }
         }
 
+        // Rules file: its name, or what is wrong with it
+        PanelLabel
+        {
+            Layout.fillWidth: true
+            visible: panelRoot.ready && director && director.rulesFile !== ""
+            wrapMode: Text.WrapAnywhere
+            elide: Text.ElideNone
+            color: (director && director.rulesFileError !== "") ? "#FF5050" : UISettings.fgMedium
+            text: director ? (director.rulesFileError !== ""
+                              ? qsTr("Rules file: %1").arg(director.rulesFileError)
+                              : qsTr("Rules: %1").arg(director.rulesFile)) : ""
+        }
+
         Repeater
         {
             model: (panelRoot.ready && director) ? director.layers : []

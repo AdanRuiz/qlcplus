@@ -72,6 +72,9 @@ BAR=$T/data/SteelPro-1030-Bar-43Ch.qxf
 # -a: the function names carry non-ASCII dashes
 grep -a "^FAIL\|E2E\|  layer\|signal" "$WORK/e2e.log"
 
+# The rules file of a run before would be read back over the rules of this one
+rm -f "$WORK"/*.director.json "$WORK"/*.director.json.bak
+
 echo "== End to end: a rig of motorised bars only, project saved"
 (cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/bars.qxw" \
     QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e-bars.log" 2>&1) || fail "bars only run (see $WORK/e2e-bars.log)"

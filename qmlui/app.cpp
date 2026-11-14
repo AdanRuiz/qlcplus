@@ -71,6 +71,8 @@
 #include "rgbscriptscache.h"
 #include "qlcconfig.h"
 #include "qlcfile.h"
+#include "outputpatch.h"
+#include "inputpatch.h"
 
 #define SETTINGS_GEOMETRY      QStringLiteral("workspace/windowrect")
 #define SETTINGS_WORKINGPATH   QStringLiteral("workspace/workingpath")
@@ -720,6 +722,7 @@ void App::initDoc()
     m_doc->inputOutputMap()->loadDefaults();
 
     m_doc->inputOutputMap()->setBeatGeneratorType(InputOutputMap::Internal);
+    applyDefaultPatch();
     m_doc->inputOutputMap()->startUniverses();
     m_doc->masterTimer()->start();
 }
@@ -964,6 +967,9 @@ bool App::newWorkspace()
     m_networkManager->notifyProjectChanging();
 
     clearDocument();
+    /* A new project starts with the rig the application already knows */
+    m_doc->inputOutputMap()->loadDefaults();
+    applyDefaultPatch();
     m_fixtureManager->slotDocLoaded();
     m_functionManager->slotDocLoaded();
     m_contextManager->resetContexts();
@@ -972,6 +978,50 @@ bool App::newWorkspace()
     m_networkManager->notifyProjectLoaded();
 
     return true;
+}
+
+/** The patch belongs to the place more than to the project: a project that
+ *  says nothing about the input or the output of a universe gets the ones
+ *  this computer used last, instead of leaving the universe unplugged. */
+void App::applyDefaultPatch()
+{
+    InputOutputMap *ioMap = m_doc->inputOutputMap();
+    QSettings settings;
+
+    for (quint32 i = 0; i < ioMap->universesCount(); i++)
+    {
+        if (ioMap->inputPatch(i) == nullptr)
+        {
+            QString plugin = settings.value(QString("/inputmap/universe%1/plugin/").arg(i)).toString();
+            QString input = settings.value(QString("/inputmap/universe%1/input/").arg(i)).toString();
+            QString profile = settings.value(QString("/inputmap/universe%1/profile/").arg(i)).toString();
+
+            if (plugin.isEmpty() == false && plugin != KInputNone && input.isEmpty() == false && input != KInputNone)
+                ioMap->setInputPatch(i, plugin, "", "", input.toUInt(), profile);
+        }
+
+        if (ioMap->outputPatchesCount(i) == 0)
+        {
+            QString plugin = settings.value(QString("/outputmap/universe%1/plugin/").arg(i)).toString();
+            QString output = settings.value(QString("/outputmap/universe%1/output/").arg(i)).toString();
+
+            if (plugin.isEmpty() == false && plugin != KOutputNone && output.isEmpty() == false && output != KOutputNone)
+                ioMap->setOutputPatch(i, plugin, "", "", output.toUInt());
+        }
+    }
+
+    // Same for the beat: a project asks for the internal generator unless
+    // told otherwise, and this computer may take its beat from the music
+    if (ioMap->beatGeneratorType() == InputOutputMap::Internal)
+    {
+        QString beat = settings.value(SETTINGS_BEAT_TYPE).toString();
+        if (beat == "PLUGIN")
+            ioMap->setBeatGeneratorType(InputOutputMap::Plugin);
+        else if (beat == "AUDIO")
+            ioMap->setBeatGeneratorType(InputOutputMap::Audio);
+        else if (beat == "OFF")
+            ioMap->setBeatGeneratorType(InputOutputMap::Disabled);
+    }
 }
 
 bool App::loadWorkspace(const QString &fileName)
@@ -994,6 +1044,8 @@ bool App::loadWorkspace(const QString &fileName)
         setTitle(QString("%1 - %2").arg(APPNAME).arg(localFilename));
         setFileName(localFilename);
         updateRecentFilesList(localFilename);
+        applyDefaultPatch();
+        m_director->setProjectFile(localFilename);
         setDocLoaded(true);
         m_doc->resetModified();
         m_videoProvider = new VideoProvider(this, m_doc);
@@ -1120,6 +1172,7 @@ bool App::saveWorkspace(const QString &fileName)
 
         setTitle(QString("%1 - %2").arg(APPNAME).arg(localFilename));
         updateRecentFilesList(localFilename);
+        m_director->setProjectFile(localFilename);
         return true;
     }
 
