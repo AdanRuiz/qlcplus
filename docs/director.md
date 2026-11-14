@@ -49,6 +49,37 @@ Como acento solo se usan las escenas de strobe de los grupos con canal de shutte
 
 El wizard solo genera movimiento para equipos con canal de pan. A los equipos que tienen tilt pero no pan, como una barra de píxeles motorizada, el Director les crea un chaser «<grupo> - Tilt sweep»: un barrido lento entre los valores 72 y 184 del canal de tilt. Corre en la capa Movement junto a lo que hagan las cabezas móviles, o solo si no las hay, y descansa en la regla de silencio.
 
+### Funciones propias junto a una capa
+
+El wizard solo conoce lo que comparten todos los equipos de un tipo. Lo que hace un modelo en particular (un cabezal que gira sobre su eje, un láser, una segunda fuente de luz) se programa a mano como funciones normales y se le entrega al Director:
+
+- `addCompanion(capa, función, secciones)` hace que la función acompañe a todo lo que corra en esa capa. Si la capa estaba vacía en una regla, la función pasa a ser su único look.
+- `addLook(capa, funciones, secciones)` añade un look más entre los que la capa rota.
+
+Sin secciones, entran en todas las reglas menos la de silencio. Las funciones siguen siendo del usuario: borrar las reglas no las borra. Volver a pasar el wizard reconstruye las reglas y hay que entregarlas de nuevo. Todavía no hay interfaz para esto; se usa desde código.
+
+### Escenario de prueba SteelPro
+
+`qmlui/director/test/data/steelpro-rig.qxw` es un proyecto con dos barras SteelPro 1030, dos SteelPro Nova y dos pares LED RGBW de 18 x 18 W, colocados como en el montaje real sobre el truss del fondo: las barras al centro, un Nova colgado en cada extremo y un par entre cada Nova y las barras. Lo genera `director_e2e` con `DIRECTOR_E2E_BAR_DEF`, `DIRECTOR_E2E_NOVA_DEF`, `DIRECTOR_E2E_PAR_DEF` y `DIRECTOR_E2E_RIG=bars`.
+
+Las barras llevan lo que el Director da a cualquier barra motorizada. Los Nova llevan además tres cosas propias:
+
+| Función | Qué hace | Cuándo corre |
+| --- | --- | --- |
+| Novas - Spin and laser | El cabezal gira de forma continua (canal 3 en 160) y el láser verde queda encendido | Siempre que hay movimiento |
+| Novas - Yellow strobe | Los dos LED amarillos del cabezal parpadean por su cuenta: luz dorada (canal 12) a tope y estrobo (canal 6) en 150 | Chorus, build y drop |
+| Novas - Arc sweep | Barrido de unos 80° de pan en 5 segundos, con el tilt más alto al pasar por el centro | Un look más de la capa Movement |
+
+Los seis equipos van en el truss del fondo, apuntando hacia el frente. Los pares llevan lo que el Director da a cualquier par: color base, cambio de color en ritmo y estrobo como acento. Las posiciones de pan y tilt salen del wizard y no están ajustadas al equipo físico.
+
+### Modelo 3D propio de un equipo
+
+Los tipos de fixture de QLC+ describen una familia (cabeza móvil, barra...). Un modelo que no se parece al resto de su familia se dibuja mal: el Nova es una «cabeza móvil» cuyos dos haces salen por los costados de un cabezal que gira, con un láser por el frente y paneles ámbar en las otras dos caras.
+
+Un modelo así puede tener su propio elemento 3D. La vista 3D lo busca por nombre en los recursos: `Model3D_<Fabricante>_<Modelo>.qml`, sin espacios ni signos. Si existe, lo usa en lugar del dibujo genérico y le entrega el valor de todos los canales (`setChannelValues`), para que represente también los que QLC+ no sabe nombrar.
+
+El del Nova está en `qmlui/qml/fixturesfunctions/3DView/models/SteelProNova.qml`: base, yugo en L y un cabezal octogonal que gira según el canal 3. Sus ocho caras alternan cuatro haces RGBW, con el color y el dimmer, y cuatro LED amarillos de estrobo, que siguen a la luz dorada (canal 12) y parpadean con el canal 6 iluminando el escenario entero. Por el frente sale un abanico de 18 rayos de láser verde. El estrobo del Nova no corta los haces: es de esos cuatro LED.
+
 ## Colores
 
 El Director crea tres paletas de color: «Director - Primary», «Director - Secondary» y «Director - Accent». Los tres primeros colores que envía VertexAV se escriben en ellas al empezar el compás, y la capa Base se reinicia para tomarlos. Un color negro se interpreta como «sin usar» y no cambia la paleta.
@@ -58,7 +89,7 @@ El Director crea tres paletas de color: «Director - Primary», «Director - Sec
 - **AUTO / OFF**: enciende o apaga el Director. Al apagarlo se detienen solo las funciones que él arrancó.
 - **Music**: BPM, tiempo del compás, sección, intensidad, energía, paleta recibida y permiso de strobe. Sección e intensidad se muestran en ámbar cuando están forzadas.
 - **Layers**: qué corre en cada capa. «Pin» deja la capa como está aunque cambie la música. «Off» la apaga.
-- **Overrides**: forzar sección o intensidad, «Hold» para congelar todo, «Next look» para pasar al siguiente candidato, «Blackout» y «Strobe» mientras se mantienen pulsados, y bloquear los strobes. «Release all» devuelve el control a la música.
+- **Overrides**: el icono de los deslizadores de la cabecera abre el panel «Director Overrides», y se pone ámbar mientras haya algo forzado. El panel tiene una caja por tipo: sección, intensidad, color y controles en vivo («Hold» para congelar todo, «Next look» para pasar al siguiente candidato, «Blackout» y «Strobe» mientras se mantienen pulsados, y bloquear los strobes). El color forzado sustituye al primario y al secundario que mande la música; el botón del color en vigor lleva una paloma, y un segundo clic lo suelta. «Release all» devuelve todo a la música.
 - **Demo**: una canción sintética en bucle (intro, verse, build, drop, breakdown, build, drop, outro). Se puede cambiar el BPM y saltar a una sección, que entra en el siguiente compás.
 
 ## Qué se guarda en el proyecto

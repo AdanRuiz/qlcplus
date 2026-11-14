@@ -79,6 +79,7 @@ class DirectorManager final : public QObject
     Q_PROPERTY(bool strobeAllowed READ strobeAllowed WRITE setStrobeAllowed NOTIFY overridesChanged)
     Q_PROPERTY(bool blackout READ blackout WRITE setBlackout NOTIFY overridesChanged)
     Q_PROPERTY(bool strobeForced READ strobeForced WRITE setStrobeForced NOTIFY overridesChanged)
+    Q_PROPERTY(QString forcedColor READ forcedColor NOTIFY overridesChanged)
     Q_PROPERTY(int activeOverrides READ activeOverrides NOTIFY overridesChanged)
 
     Q_PROPERTY(bool demoRunning READ demoRunning NOTIFY demoChanged)
@@ -130,6 +131,8 @@ public:
 public:
     QString forcedSection() const;
     QString forcedIntensity() const;
+    /** Colour the operator took from the music, as "#rrggbb". Empty = none */
+    QString forcedColor() const;
     bool hold() const;
     void setHold(bool hold);
     bool strobeAllowed() const;
@@ -143,6 +146,11 @@ public:
     /** Force a section/intensity. An empty string gives control back */
     Q_INVOKABLE void forceSection(const QString &section);
     Q_INVOKABLE void forceIntensity(const QString &intensity);
+
+    /** Paint the show in $color ("#rrggbb"): it replaces the primary and the
+     *  secondary colour, whatever the music sends. An empty string gives the
+     *  colours back to the music. */
+    Q_INVOKABLE void forceColor(const QString &color);
 
     /** Keep on $layer what is running now, until released */
     Q_INVOKABLE void pinLayer(int layer, bool pin);
@@ -164,6 +172,25 @@ public:
 
     /** Delete the rules and the Functions the Director created */
     Q_INVOKABLE void clearRules();
+
+    /** Make $function go along with whatever runs on $layer: it is added to
+     *  every look of that layer, and becomes a look of its own where the
+     *  layer has none. This is how Functions made outside the wizard join
+     *  the show, for what only one kind of fixture can do (a spinning head,
+     *  a laser, a second light source).
+     *
+     *  $sections limits it to the rules for those sections; when empty it
+     *  goes into every rule except the one for silence. The Function stays
+     *  the user's: clearing the rules does not delete it.
+     *
+     *  @return the number of rules it was added to */
+    Q_INVOKABLE int addCompanion(int layer, quint32 function, const QStringList &sections = QStringList());
+
+    /** Add $functions as one more look for $layer to choose from, in the
+     *  same rules addCompanion() would pick.
+     *
+     *  @return the number of rules it was added to */
+    int addLook(int layer, const QList<quint32> &functions, const QStringList &sections = QStringList());
 
     /*********************************************************************
      * Demo mode
@@ -224,6 +251,11 @@ private:
      *  not pan (motorised bars). Returns invalidId() when there are none. */
     quint32 makeTiltSweep(const QString &groupName, quint32 groupId);
 
+    /** Rules addCompanion() and addLook() apply to, as indexes */
+    QList<int> rulesFor(const QStringList &sections) const;
+    /** Replace the rules of a Director that may be running */
+    void replaceRules(const QList<DirectorEngine::Rule> &rules);
+
     /** Append a line to the file named by the QLCPLUS_DIRECTOR_LOG
      *  environment variable. Does nothing when it is not set. */
     void log(const QString &text) const;
@@ -252,6 +284,8 @@ private:
     QColor m_inColors[6];
     QColor m_appliedColors[PaletteSlots];
     quint32 m_slotPalette[PaletteSlots];
+    /* Colour forced by the operator. Invalid = the music decides */
+    QColor m_forcedColor;
     bool m_paletteDirty;
 
     /* Functions created by the Director, deleted when rules are rebuilt */

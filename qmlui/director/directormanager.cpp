@@ -478,7 +478,29 @@ void DirectorManager::setStrobeForced(bool forced)
 
 int DirectorManager::activeOverrides() const
 {
-    return m_engine.activeOverrides();
+    return m_engine.activeOverrides() + (m_forcedColor.isValid() ? 1 : 0);
+}
+
+QString DirectorManager::forcedColor() const
+{
+    return m_forcedColor.isValid() ? m_forcedColor.name() : QString();
+}
+
+void DirectorManager::forceColor(const QString &color)
+{
+    const QColor col = color.isEmpty() ? QColor() : QColor(color);
+    if (col == m_forcedColor)
+        return;
+
+    m_forcedColor = col;
+    log(QString("colour %1").arg(col.isValid() ? col.name() : QString("back to the music")));
+
+    // The palettes are written at once and the Base layer restarted, rather
+    // than at the next bar: an override has to be seen when it is pressed
+    m_paletteDirty = true;
+    evaluateNow();
+    emit overridesChanged();
+    emit musicChanged();
 }
 
 void DirectorManager::forceSection(const QString &section)
@@ -519,6 +541,12 @@ void DirectorManager::releaseAll()
 {
     m_engine.releaseAll();
     m_engine.setStrobeAllowed(true);
+    if (m_forcedColor.isValid())
+    {
+        m_forcedColor = QColor();
+        m_paletteDirty = true;
+        evaluateNow();
+    }
     emit overridesChanged();
     emit musicChanged();
     emit lookChanged();
@@ -808,6 +836,18 @@ void DirectorManager::applyBaseLevel()
     }
 }
 
+/** Colours of the three Director palettes until the music sends its own.
+ *  Deliberately not part of the wizard's vocabulary of fixed colours. */
+static QColor defaultSlotColor(int slot)
+{
+    switch (slot)
+    {
+        case 0: return QColor(255, 0, 48);
+        case 1: return QColor(0, 48, 255);
+        default: return QColor(255, 255, 254);
+    }
+}
+
 void DirectorManager::applyPalette()
 {
     if (m_paletteDirty == false)
@@ -817,9 +857,26 @@ void DirectorManager::applyPalette()
     bool changed = false;
     for (int i = 0; i < PaletteSlots; i++)
     {
-        const QColor col = m_inColors[i];
+        QColor col = m_inColors[i];
         // Black means "slot not used" in the VertexAV palette
-        if (col.isValid() == false || col == QColor(Qt::black) || col == m_appliedColors[i])
+        const bool fromMusic = col.isValid() && col != QColor(Qt::black);
+
+        if (m_forcedColor.isValid() && i < 2)
+        {
+            // The operator's colour takes the primary and the secondary slot;
+            // the accent stays, so a strobe is still a strobe
+            col = m_forcedColor;
+        }
+        else if (fromMusic == false)
+        {
+            // Nothing from the music: only go back to the default if a
+            // forced colour, now released, was written over it
+            if (m_appliedColors[i].isValid() == false)
+                continue;
+            col = defaultSlotColor(i);
+        }
+
+        if (col == m_appliedColors[i])
             continue;
 
         QLCPalette *palette = m_doc->palette(m_slotPalette[i]);
@@ -1013,6 +1070,110 @@ void DirectorManager::clearRules()
     emit lookChanged();
 }
 
+QList<int> DirectorManager::rulesFor(const QStringList &sections) const
+{
+    QList<int> indexes;
+    const QList<DirectorEngine::Rule> &rules = m_engine.rules();
+    for (int r = 0; r < rules.count(); r++)
+    {
+        bool match = false;
+        if (sections.isEmpty())
+        {
+            match = (rules.at(r).sections.contains("silence") == false);
+        }
+        else
+        {
+            foreach (const QString &section, sections)
+            {
+                if (rules.at(r).sections.contains(section))
+                    match = true;
+            }
+        }
+        if (match)
+            indexes << r;
+    }
+    return indexes;
+}
+
+void DirectorManager::replaceRules(const QList<DirectorEngine::Rule> &rules)
+{
+    // The engine forgets the current look with its rules: stop what it
+    // started first, or those Functions would be left running
+    bool wasEnabled = m_enabled;
+    if (wasEnabled)
+        setEnabled(false);
+
+    m_engine.setRules(rules);
+    m_doc->setModified();
+    emit rulesChanged();
+    emit lookChanged();
+
+    if (wasEnabled)
+        setEnabled(true);
+}
+
+int DirectorManager::addCompanion(int layer, quint32 function, const QStringList &sections)
+{
+    if (layer < 0 || layer >= DirectorEngine::LayerCount || m_doc->function(function) == nullptr)
+        return 0;
+
+    QList<DirectorEngine::Rule> rules = m_engine.rules();
+    int added = 0;
+    foreach (int r, rulesFor(sections))
+    {
+        QList<DirectorEngine::Bundle> &looks = rules[r].layers[layer];
+        if (looks.isEmpty())
+        {
+            looks.append(DirectorEngine::Bundle() << function);
+        }
+        else
+        {
+            for (int b = 0; b < looks.count(); b++)
+            {
+                if (looks.at(b).contains(function) == false)
+                    looks[b] << function;
+            }
+        }
+        added++;
+    }
+
+    if (added > 0)
+        replaceRules(rules);
+    log(QString("companion %1 on %2: %3 rules").arg(function).arg(DirectorEngine::layerName(layer)).arg(added));
+    return added;
+}
+
+int DirectorManager::addLook(int layer, const QList<quint32> &functions, const QStringList &sections)
+{
+    if (layer < 0 || layer >= DirectorEngine::LayerCount)
+        return 0;
+
+    DirectorEngine::Bundle bundle;
+    foreach (quint32 fid, functions)
+    {
+        if (m_doc->function(fid) != nullptr && bundle.contains(fid) == false)
+            bundle << fid;
+    }
+    if (bundle.isEmpty())
+        return 0;
+
+    QList<DirectorEngine::Rule> rules = m_engine.rules();
+    int added = 0;
+    foreach (int r, rulesFor(sections))
+    {
+        if (rules.at(r).layers[layer].contains(bundle) == false)
+        {
+            rules[r].layers[layer].append(bundle);
+            added++;
+        }
+    }
+
+    if (added > 0)
+        replaceRules(rules);
+    log(QString("look of %1 on %2: %3 rules").arg(bundle.count()).arg(DirectorEngine::layerName(layer)).arg(added));
+    return added;
+}
+
 void DirectorManager::setupFromManifest(const DirectorManifest &manifest, bool enable)
 {
     typedef DirectorEngine::Bundle Bundle;
@@ -1027,12 +1188,10 @@ void DirectorManager::setupFromManifest(const DirectorManifest &manifest, bool e
     {
         QT_TR_NOOP("Director - Primary"), QT_TR_NOOP("Director - Secondary"), QT_TR_NOOP("Director - Accent")
     };
-    const QColor slotDefaults[PaletteSlots] = { QColor(255, 0, 48), QColor(0, 48, 255), QColor(255, 255, 254) };
-
     for (int i = 0; i < PaletteSlots; i++)
     {
         QVariantList values;
-        values << QLCPalette::colorToString(slotDefaults[i], QColor());
+        values << QLCPalette::colorToString(defaultSlotColor(i), QColor());
         m_slotPalette[i] = findOrCreatePalette(QLCPalette::Color, tr(slotNames[i]), values, false);
         m_appliedColors[i] = QColor();
     }

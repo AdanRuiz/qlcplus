@@ -39,6 +39,8 @@ Rectangle
     readonly property bool ready: director ? director.hasRules : false
 
     signal closeRequested()
+    /** The operator asked for the overrides panel */
+    signal overridesRequested()
 
     // Swallow clicks and wheel events so they do not reach the view below
     MouseArea
@@ -167,6 +169,20 @@ Rectangle
                     activeColor: "#2E9E48"
                     enabled: panelRoot.ready
                     onClicked: director.enabled = !director.enabled
+                }
+
+                // Opens the overrides panel. Amber while something is overridden
+                IconButton
+                {
+                    implicitWidth: panelRoot.rowH
+                    implicitHeight: panelRoot.rowH
+                    width: panelRoot.rowH
+                    height: panelRoot.rowH
+                    faSource: FontAwesome.fa_sliders
+                    faColor: (director && director.activeOverrides > 0) ? "#FFB020" : UISettings.fgMain
+                    enabled: panelRoot.ready
+                    tooltip: qsTr("Overrides: section, intensity, colour and live controls")
+                    onClicked: panelRoot.overridesRequested()
                 }
 
                 PanelButton
@@ -340,125 +356,6 @@ Rectangle
                     activeColor: "#A03030"
                     onClicked: director.setLayerOff(modelData.index, !modelData.off)
                 }
-            }
-        }
-
-        // ── Overrides ────────────────────────────────────────────────────────
-        RowLayout
-        {
-            Layout.fillWidth: true
-            visible: panelRoot.ready
-
-            SectionTitle { text: qsTr("Overrides") }
-            Item { Layout.fillWidth: true }
-            PanelButton
-            {
-                label: qsTr("Release all (%1)").arg(director ? director.activeOverrides : 0)
-                enabled: director ? director.activeOverrides > 0 : false
-                onClicked: director.releaseAll()
-            }
-        }
-
-        Flow
-        {
-            Layout.fillWidth: true
-            visible: panelRoot.ready
-            spacing: 4
-
-            PanelButton
-            {
-                label: qsTr("Section: auto")
-                active: director ? director.forcedSection === "" : false
-                onClicked: director.forceSection("")
-            }
-
-            Repeater
-            {
-                model: director ? director.sections : []
-                PanelButton
-                {
-                    label: modelData
-                    visible: modelData !== "unknown"
-                    active: director ? director.forcedSection === modelData : false
-                    activeColor: "#C07A00"
-                    onClicked: director.forceSection(modelData)
-                }
-            }
-        }
-
-        Flow
-        {
-            Layout.fillWidth: true
-            visible: panelRoot.ready
-            spacing: 4
-
-            PanelButton
-            {
-                label: qsTr("Intensity: auto")
-                active: director ? director.forcedIntensity === "" : false
-                onClicked: director.forceIntensity("")
-            }
-
-            Repeater
-            {
-                model: director ? director.intensities : []
-                PanelButton
-                {
-                    label: modelData
-                    active: director ? director.forcedIntensity === modelData : false
-                    activeColor: "#C07A00"
-                    onClicked: director.forceIntensity(modelData)
-                }
-            }
-        }
-
-        Flow
-        {
-            Layout.fillWidth: true
-            visible: panelRoot.ready
-            spacing: 4
-
-            PanelButton
-            {
-                label: qsTr("Hold")
-                active: director ? director.hold : false
-                activeColor: "#C07A00"
-                onClicked: director.hold = !director.hold
-            }
-
-            PanelButton
-            {
-                label: qsTr("Next look")
-                onClicked: director.nextLook()
-            }
-
-            PanelButton
-            {
-                label: qsTr("Blackout")
-                momentary: true
-                active: director ? director.blackout : false
-                activeColor: "#A03030"
-                onPressed: director.blackout = true
-                onReleased: director.blackout = false
-            }
-
-            PanelButton
-            {
-                label: qsTr("Strobe")
-                momentary: true
-                enabled: director ? director.strobeAllowed : false
-                active: director ? director.strobeForced : false
-                activeColor: "#D0D0D0"
-                onPressed: director.strobeForced = true
-                onReleased: director.strobeForced = false
-            }
-
-            PanelButton
-            {
-                label: (director && director.strobeAllowed) ? qsTr("Strobes allowed") : qsTr("Strobes blocked")
-                active: director ? !director.strobeAllowed : false
-                activeColor: "#A03030"
-                onClicked: director.strobeAllowed = !director.strobeAllowed
             }
         }
 

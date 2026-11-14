@@ -77,6 +77,13 @@ echo "== End to end: a rig of motorised bars only, project saved"
     QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e-bars.log" 2>&1) || fail "bars only run (see $WORK/e2e-bars.log)"
 grep -a "^FAIL\|E2E\|  layer\|  rule\|signal" "$WORK/e2e-bars.log"
 
+echo "== End to end: two SteelPro 1030 bars, two SteelPro Novas and two LED pars, project saved"
+NOVA=$T/data/SteelPro-Nova.qxf
+PAR=$T/data/Generic-AH40-DH41-18x18W-RGBW-Par.qxf
+(cd "$BUILD/qmlui" && DIRECTOR_E2E_BAR_DEF=$BAR DIRECTOR_E2E_NOVA_DEF=$NOVA DIRECTOR_E2E_PAR_DEF=$PAR DIRECTOR_E2E_RIG=bars DIRECTOR_E2E_SAVE="$WORK/steelpro-rig.qxw" \
+    QT_QPA_PLATFORM=offscreen timeout 60 "$BIN/director_e2e$EXE" > "$WORK/e2e-steelpro.log" 2>&1) || fail "SteelPro rig run (see $WORK/e2e-steelpro.log)"
+grep -a "^FAIL\|E2E\|  layer\|signal" "$WORK/e2e-steelpro.log"
+
 echo "== Panel: QML warnings and screenshot"
 cd "$WORK" || exit 1
 mkdir -p panel && cp "$SRC"/qmlui/qml/*.qml "$SRC/qmlui/qml/qmldir" "$SRC/qmlui/qml/director/DirectorPanel.qml" panel/

@@ -113,6 +113,23 @@ Rectangle
 
                     Rectangle { Layout.fillWidth: true; color: "transparent" }
 
+                    // own window / back into the main window
+                    IconButton
+                    {
+                        faSource: simpleDesk.detached ? FontAwesome.fa_arrow_right_to_bracket
+                                                      : FontAwesome.fa_arrow_up_right_from_square
+                        faColor: UISettings.fgMain
+                        tooltip: simpleDesk.detached ? qsTr("Bring back into the main window")
+                                                     : qsTr("Open in a window of its own")
+                        onClicked:
+                        {
+                            if (simpleDesk.detached)
+                                contextManager.reattachContext("SDESK")
+                            else
+                                mainView.detachContext("SDESK")
+                        }
+                    }
+
                     // DMX/Percentage button
                     DMXPercentageButton
                     {

@@ -64,6 +64,7 @@
 
     <!-- Stage Wizard -->
     <file alias="DirectorPanel.qml">qml/director/DirectorPanel.qml</file>
+    <file alias="DirectorOverridesPanel.qml">qml/director/DirectorOverridesPanel.qml</file>
     <file alias="ShowWizard.qml">qml/stagewizard/ShowWizard.qml</file>
     <file alias="WizardStepIndicator.qml">qml/stagewizard/WizardStepIndicator.qml</file>
     <file alias="WizardStep1ShowType.qml">qml/stagewizard/WizardStep1ShowType.qml</file>
@@ -167,6 +168,7 @@
     <file alias="Fixture3DItem.qml">qml/fixturesfunctions/3DView/Fixture3DItem.qml</file>
     <file alias="LightEntity.qml">qml/fixturesfunctions/3DView/LightEntity.qml</file>
     <file alias="MultiBeams3DItem.qml">qml/fixturesfunctions/3DView/MultiBeams3DItem.qml</file>
+    <file alias="Model3D_SteelPro_Nova.qml">qml/fixturesfunctions/3DView/models/SteelProNova.qml</file>
     <file alias="PixelBar3DItem.qml">qml/fixturesfunctions/3DView/PixelBar3DItem.qml</file>
     <file alias="Strobe3DItem.qml">qml/fixturesfunctions/3DView/Strobe3DItem.qml</file>
     <file alias="Generic3DItem.qml">qml/fixturesfunctions/3DView/Generic3DItem.qml</file>

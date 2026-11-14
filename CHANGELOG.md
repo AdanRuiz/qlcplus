@@ -30,9 +30,22 @@ Based on the QLC+ 5.3.0 engine.
 - Demonstration mode, to watch the Director work in the 3D view without
   music, fixtures or a sender.
 - Tilt sweep for motorised bars.
+- Functions made by hand can go along with a layer of the Director, for what
+  only one kind of fixture can do (a spinning head, a laser, a second light
+  source). There is no interface for it yet.
 - Optional trace file of the Director's decisions.
 - VertexAV Link input plugin, which brings the musical information the
   Director reads into the application.
+- A fixture model can have a 3D item of its own, for when it does not look
+  or behave like the rest of its type. The SteelPro Nova has one: a spinning
+  octagonal head with four beams and four yellow strobe LEDs on its sides,
+  and a laser fan out of its front.
+- A button inside the Simple Desk moves it to a window of its own, and
+  another one in that window brings it back.
+- Director Overrides panel, opened from the Director panel: section,
+  intensity, colour and live controls, each in a box of its own.
+- Colour override: the operator paints the show in one colour, whatever the
+  music sends, until it is released.
 - Rock stage as the default stage of the 3D view.
 - SteelPro Nova fixture definition.
 - Own name, icon and logo. The QLC+ engine is credited in the About box,
@@ -40,6 +53,12 @@ Based on the QLC+ 5.3.0 engine.
 
 ### Changed
 
+- The first time, the application opens in a window that fits a Full HD
+  laptop instead of taking the whole screen. After that it remembers the
+  size it was closed with.
+- 3D view: a beam fades out towards the rim of its cone where it lands,
+  instead of ending in a hard edged ellipse, and the stage is darker by
+  default (ambient light 25 % instead of 60 %) so the lights stand out.
 - Settings, cache, Windows installer and file association identifiers are
   separate from those of QLC+, so both can be installed side by side.
   Project files (`.qxw`), fixture definitions and the user data folder are

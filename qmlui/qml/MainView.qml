@@ -43,6 +43,22 @@ Rectangle
 
     property bool directorVisible: false
     function toggleDirector() { mainView.directorVisible = !mainView.directorVisible }
+    /* Opened from the Director panel, and closed with it */
+    property bool directorOverridesVisible: false
+    onDirectorVisibleChanged: if (directorVisible === false) directorOverridesVisible = false
+
+    /* Move a context to a window of its own, from inside the context */
+    function detachContext(ctx)
+    {
+        if (ctx !== "SDESK")
+            return
+
+        // something has to take its place in the main window
+        if (currentContext === sdEntry.ctxName)
+            fnfEntry.checked = true
+        sdEntry.visible = false
+        contextManager.detachContext("SDESK")
+    }
 
     function enableContext(ctx, setChecked)
     {
@@ -606,7 +622,25 @@ Rectangle
         z: 90
         active: mainView.directorVisible
         source: "qrc:/DirectorPanel.qml"
-        onLoaded: if (item) item.closeRequested.connect(function() { mainView.directorVisible = false })
+        onLoaded:
+        {
+            if (item === null)
+                return
+            item.closeRequested.connect(function() { mainView.directorVisible = false })
+            item.overridesRequested.connect(function() { mainView.directorOverridesVisible = !mainView.directorOverridesVisible })
+        }
+    }
+
+    Loader
+    {
+        id: directorOverridesOverlay
+        // to the left of the Director panel
+        x: Math.max(10, directorOverlay.x - width - 10)
+        y: directorOverlay.y
+        z: 90
+        active: mainView.directorVisible && mainView.directorOverridesVisible
+        source: "qrc:/DirectorOverridesPanel.qml"
+        onLoaded: if (item) item.closeRequested.connect(function() { mainView.directorOverridesVisible = false })
     }
 
     Loader
