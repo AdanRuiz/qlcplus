@@ -53,6 +53,27 @@
 
 //#define SHOW_FRAMEGRAPH
 
+/** QML item that draws one particular fixture model, when there is one.
+ *
+ *  The fixture types of QLC+ describe a family (a moving head, a bar...), and
+ *  a model that does not look or behave like the rest of its family is drawn
+ *  wrong: a SteelPro Nova is a "moving head" whose two beams leave through
+ *  the sides of a head that spins. Such a model gets an item of its own,
+ *  found by name: Model3D_<Manufacturer>_<Model>.qml in the resources, with
+ *  everything that is not a letter or a digit removed. */
+static QString customItemResource(const Fixture *fixture)
+{
+    if (fixture == nullptr || fixture->fixtureDef() == nullptr)
+        return QString();
+
+    static const QRegularExpression other("[^A-Za-z0-9]");
+    QString manufacturer = fixture->fixtureDef()->manufacturer();
+    QString model = fixture->fixtureDef()->model();
+    QString name = QString("Model3D_%1_%2.qml").arg(manufacturer.remove(other)).arg(model.remove(other));
+
+    return QFile::exists(":/" + name) ? "qrc:/" + name : QString();
+}
+
 static bool isQt3DSupportedFixtureType(QLCFixtureDef::FixtureType type)
 {
     switch (type)
@@ -101,7 +122,7 @@ MainView3D::MainView3D(QQuickView *view, Doc *doc, QObject *parent)
     , m_markerEntity(nullptr)
     , m_renderQuality(HighQuality)
     , m_stageEntity(nullptr)
-    , m_ambientIntensity(0.6)
+    , m_ambientIntensity(0.25)
     , m_smokeAmount(0.8)
 {
     setContextResource("qrc:/3DView.qml");
@@ -734,7 +755,28 @@ void MainView3D::createFixtureItem(quint32 fxID, quint16 headIndex, quint16 link
         fixture->channelNumber(QLCChannel::Pan, QLCChannel::MSB) == QLCChannel::invalid() &&
         fixture->channelNumber(QLCChannel::Tilt, QLCChannel::MSB) == QLCChannel::invalid();
 
-    if (fixture->type() == QLCFixtureDef::LEDBarBeams || multiPar)
+    const QString customItem = customItemResource(fixture);
+
+    if (customItem.isEmpty() == false)
+    {
+        // the item draws itself, lights included
+        mesh->m_goboTexture = new GoboTextureImage(512, 512, openGobo);
+
+        QQmlComponent *customComp = new QQmlComponent(m_view->engine(), QUrl(customItem));
+        if (customComp->isError())
+            qDebug() << customComp->errors();
+
+        newItem = qobject_cast<QEntity *>(customComp->create());
+        if (newItem == nullptr)
+        {
+            qDebug() << "Fixture 3D item creation failed !!" << customItem;
+            delete mesh->m_goboTexture;
+            delete mesh;
+            m_createItemCount--;
+            return;
+        }
+    }
+    else if (fixture->type() == QLCFixtureDef::LEDBarBeams || multiPar)
     {
         mesh->m_goboTexture = new GoboTextureImage(512, 512, openGobo);
 
@@ -816,7 +858,8 @@ void MainView3D::createFixtureItem(quint32 fxID, quint16 headIndex, quint16 link
     QString meshFile = FixtureUtils::fixtureLightResource(fixture);
     meshPath.append(meshFile);
 
-    switch (fixture->type())
+    // a model with an item of its own is drawn without a mesh, whatever its type
+    switch (customItem.isEmpty() ? fixture->type() : QLCFixtureDef::LEDBarBeams)
     {
         case QLCFixtureDef::ColorChanger:
             // a multi par is built procedurally, see above
@@ -849,7 +892,7 @@ void MainView3D::createFixtureItem(quint32 fxID, quint16 headIndex, quint16 link
         break;
     }
 
-    if (meshFile.isEmpty() || multiPar)
+    if (meshFile.isEmpty() || multiPar || customItem.isEmpty() == false)
         meshPath.clear();
 
     // at last, add the new fixture to the items map
@@ -1310,6 +1353,13 @@ void MainView3D::initializeFixture(quint32 itemID, QEntity *fxEntity, const QSce
         // set physical dimension
         meshRef->m_volume.m_extents = fxSize;
         fxEntity->setProperty("phySize", QVariant::fromValue(fxSize));
+
+        // an item that draws one fixture model moves its own parts
+        if (fxEntity->property("customModel").toBool())
+        {
+            fxEntity->setProperty("panMaxDegrees", panDeg);
+            fxEntity->setProperty("tiltMaxDegrees", tiltDeg);
+        }
     }
 
     qDebug() << "Calculated volume" << meshRef->m_volume.m_extents << meshRef->m_volume.m_center;
@@ -1673,6 +1723,16 @@ void MainView3D::updateFixtureItem(Fixture *fixture, quint16 headIndex, quint16 
         QMetaObject::invokeMethod(fixtureItem, "setPosition",
                 Q_ARG(QVariant, panValue),
                 Q_ARG(QVariant, tiltValue));
+    }
+
+    // An item that draws one fixture model knows what each of its channels
+    // does, including those the fixture types above have no name for
+    if (fixtureItem->property("customModel").toBool())
+    {
+        QVariantList values;
+        for (quint32 ch = 0; ch < fixture->channels(); ch++)
+            values << int(fixture->channelValueAt(int(ch)));
+        QMetaObject::invokeMethod(fixtureItem, "setChannelValues", Q_ARG(QVariant, values));
     }
 }
 

@@ -69,7 +69,12 @@ void main()
         vec4 p = lightProjectionMatrix * lightViewMatrix * vec4(position.xyz, 1.0);
         float curZ = (p.z / p.w) * 0.5 + 0.5;
         float refZ = SAMPLE_TEX2D(shadowTex, ((p.xy) / p.w) * 0.5 + vec2(0.5)).r;
-        shadowMask = (curZ < refZ + 0.0003 ? 1.0 : 0.0);
+        // The margin grows as the beam lands at a shallower angle: with a
+        // fixed one, a surface seen almost edge on from the light shadows
+        // itself in stripes
+        float facing = max(0.0, dot(normal, -lightDir));
+        float margin = mix(0.004, 0.0006, facing);
+        shadowMask = (curZ < refZ + margin ? 1.0 : 0.0);
     }
 
     vec4 q = lightViewMatrix * vec4(position.xyz, 1.0);
@@ -79,7 +84,12 @@ void main()
     vec4 gSample = SAMPLE_TEX2D(goboTex, tc.xy);
     float goboMask = gSample.a * gSample.r;
 
-    vec3 finalColor = shadowMask * goboMask * lightColor * lightIntensity * max(0, dot(normal, -lightDir)) * albedo;
+    // A beam fades out towards the rim of its cone, instead of ending in a
+    // hard edged ellipse where it lands
+    float rim = length(q.xy) / r;
+    float edge = 1.0 - smoothstep(0.35, 1.0, rim);
+
+    vec3 finalColor = shadowMask * goboMask * edge * lightColor * lightIntensity * max(0, dot(normal, -lightDir)) * albedo;
 
     MGL_FRAG_COLOR = vec4(finalColor, 1.0);
     //MGL_FRAG_COLOR = vec4(1.0, 0.0, 0.0, 1.0);
