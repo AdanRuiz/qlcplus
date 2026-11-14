@@ -199,6 +199,7 @@
     <file alias="OutputFrontDepthFilter.qml">qml/fixturesfunctions/3DView/OutputFrontDepthFilter.qml</file>
     <file alias="RenderShadowMapFilter.qml">qml/fixturesfunctions/3DView/RenderShadowMapFilter.qml</file>
     <file alias="LightGate.qml">qml/fixturesfunctions/3DView/LightGate.qml</file>
+    <file alias="ClearTargetFilter.qml">qml/fixturesfunctions/3DView/ClearTargetFilter.qml</file>
     <file alias="GrabBrightFilter.qml">qml/fixturesfunctions/3DView/GrabBrightFilter.qml</file>
     <file alias="DownsampleFilter.qml">qml/fixturesfunctions/3DView/DownsampleFilter.qml</file>
     <file alias="UpsampleFilter.qml">qml/fixturesfunctions/3DView/UpsampleFilter.qml</file>

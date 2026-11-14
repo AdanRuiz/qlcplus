@@ -27,10 +27,13 @@ TechniqueFilter
     property RenderTarget outRenderTarget
     property Texture2D hdrTexture: null
     property Texture2D bloomTexture: null
+    /* The beams in the air, drawn apart at half size */
+    property Texture2D scatterTexture: null
 
     parameters: [
         Parameter { name: "hdrTex"; value: hdrTexture },
-        Parameter { name: "bloomTex"; value: bloomTexture }
+        Parameter { name: "bloomTex"; value: bloomTexture },
+        Parameter { name: "scatterTex"; value: scatterTexture }
     ]
 
     RenderStateSet

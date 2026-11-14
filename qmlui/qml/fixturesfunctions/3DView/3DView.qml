@@ -285,6 +285,12 @@ Rectangle
                 }
             }
 
+            // the beams in the air start from black on every frame
+            component = Qt.createComponent("ClearTargetFilter.qml");
+            if (component.status === Component.Error)
+                console.log("Error loading component:", component.errorString())
+            component.createObject(frameGraph.myCameraSelector, { "target": scatterTarget });
+
             if (fixtures.length)
             {
                 component = Qt.createComponent("OutputFrontDepthFilter.qml");
@@ -326,7 +332,7 @@ Rectangle
                         "shadowTex": fixtureItem.useShadows
                                      ? (fixtureItem.sharedShadow ? fixtureItem.sharedShadow.depthTex : headEntity.depthTex)
                                      : null,
-                        "frameTarget": frameTarget,
+                        "frameTarget": scatterTarget,
                         "useShadows": fixtureItem.useShadows
                     });
                 }
@@ -340,6 +346,7 @@ Rectangle
             {
                 "hdrTexture": frameTarget.color,
                 "bloomTexture": texChainTextures[0],
+                "scatterTexture": scatterTexture,
                 "outRenderTarget": hdr0RenderTarget,
                 "screenQuadGammaCorrectLayer": screenQuadGammaCorrectEntity.layer
             });
@@ -656,6 +663,38 @@ Rectangle
             GBuffer { id: gBufferTarget }
 
             FrameTarget { id: frameTarget }
+
+            /* The beams in the air are drawn at half the size of the frame and
+               added to it at the end. They are soft by nature, so nothing is
+               lost, and marching through each cone is by far what costs the
+               graphics card most: a quarter of the pixels is a quarter of it. */
+            Texture2D
+            {
+                id: scatterTexture
+                width: 512
+                height: 512
+                format: Texture.RGBA16F
+                generateMipMaps: false
+                magnificationFilter: Texture.Linear
+                minificationFilter: Texture.Linear
+                wrapMode
+                {
+                    x: WrapMode.ClampToEdge
+                    y: WrapMode.ClampToEdge
+                }
+            }
+
+            RenderTarget
+            {
+                id: scatterTarget
+                attachments: [
+                    RenderTargetOutput
+                    {
+                        attachmentPoint: RenderTargetOutput.Color0
+                        texture: scatterTexture
+                    }
+                ]
+            }
 
             Texture2D
             {
