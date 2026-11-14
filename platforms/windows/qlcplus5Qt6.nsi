@@ -16,7 +16,7 @@
 ;--------------------------------
 ;General
 Name "VertexAV Director"
-OutFile "VertexAV-Director_0.1.1.exe"
+OutFile "VertexAV-Director_0.2.0.exe"
 InstallDir C:\VertexAV-Director
 InstallDirRegKey HKCU "Software\VertexAVDirector" "Install_Dir"
 RequestExecutionLevel user
