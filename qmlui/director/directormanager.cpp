@@ -17,6 +17,12 @@
 
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
+#include <QCryptographicHash>
+#include <QRegularExpression>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QFileInfo>
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
@@ -121,6 +127,7 @@ DirectorManager::DirectorManager(Doc *doc, QObject *parent)
     , m_hasDownbeat(false)
     , m_gotInput(false)
     , m_paletteDirty(false)
+    , m_readingRulesFile(false)
     , m_logPath(qEnvironmentVariable("QLCPLUS_DIRECTOR_LOG"))
     , m_beatCount(0)
     , m_demoBpm(128)
@@ -145,6 +152,15 @@ DirectorManager::DirectorManager(Doc *doc, QObject *parent)
 
     m_demoTimer.setTimerType(Qt::PreciseTimer);
     connect(&m_demoTimer, SIGNAL(timeout()), this, SLOT(slotDemoTick()));
+
+    // Editors save in several steps (truncate, write, rename): wait for the
+    // file to settle before reading it
+    m_rulesReload.setSingleShot(true);
+    m_rulesReload.setInterval(250);
+    connect(&m_rulesReload, SIGNAL(timeout()), this, SLOT(slotRulesFileChanged()));
+    connect(&m_rulesWatcher, SIGNAL(fileChanged(QString)), &m_rulesReload, SLOT(start()));
+    connect(&m_rulesWatcher, SIGNAL(directoryChanged(QString)), &m_rulesReload, SLOT(start()));
+    connect(this, SIGNAL(rulesChanged()), this, SLOT(slotRulesEdited()));
 
     log("started");
 }
@@ -1096,6 +1112,8 @@ void DirectorManager::slotFunctionRemoved(quint32 id)
 
 void DirectorManager::slotDocClearing()
 {
+    // The rules about to be dropped must not reach the file of the project
+    setProjectFile(QString());
     reset();
 }
 
@@ -1939,4 +1957,407 @@ bool DirectorManager::saveXML(QXmlStreamWriter *doc) const
 
     doc->writeEndElement();
     return true;
+}
+
+/*****************************************************************************
+ * Rules file
+ *****************************************************************************/
+
+void DirectorManager::setProjectFile(const QString &projectFile)
+{
+    QString path;
+    if (projectFile.isEmpty() == false)
+    {
+        QFileInfo info(projectFile);
+        path = info.absolutePath() + "/" + info.completeBaseName() + ".director.json";
+    }
+
+    if (path == m_rulesFile)
+    {
+        // The project has just been saved with the rules that are running
+        if (m_rulesFile.isEmpty() == false)
+            stampRulesFile();
+        return;
+    }
+
+    if (m_rulesWatcher.files().isEmpty() == false)
+        m_rulesWatcher.removePaths(m_rulesWatcher.files());
+    if (m_rulesWatcher.directories().isEmpty() == false)
+        m_rulesWatcher.removePaths(m_rulesWatcher.directories());
+    m_rulesReload.stop();
+
+    m_rulesFile = path;
+    m_rulesFileError.clear();
+    m_rulesFileData.clear();
+    m_rulesFileRules = QJsonArray();
+    m_rulesFileOverrides = QJsonObject();
+
+    if (m_rulesFile.isEmpty() == false)
+    {
+        // Right now the engine holds the rules of the project
+        m_projectStamp = rulesStamp();
+
+        bool stale = false;
+        QFile file(m_rulesFile);
+        if (file.open(QIODevice::ReadOnly))
+        {
+            const QJsonObject old = QJsonDocument::fromJson(file.readAll()).object();
+            file.close();
+            const QString stamp = old.value("project").toString();
+            // A file with no stamp was written by hand: it is left in charge
+            stale = (stamp.isEmpty() == false && m_projectStamp.isEmpty() == false && stamp != m_projectStamp);
+            if (stale)
+                m_rulesFileOverrides = old.value("overrides").toObject();
+        }
+
+        if (stale)
+        {
+            QFile::remove(m_rulesFile + ".bak");
+            QFile::rename(m_rulesFile, m_rulesFile + ".bak");
+            log("rules file: older than the project, kept as .bak and written again");
+            writeRulesFile();
+        }
+        else if (QFile::exists(m_rulesFile))
+        {
+            readRulesFile();
+        }
+        else
+        {
+            writeRulesFile();
+        }
+        watchRulesFile();
+    }
+    else
+    {
+        m_projectStamp.clear();
+    }
+
+    emit rulesFileChanged();
+}
+
+QString DirectorManager::rulesFile() const
+{
+    return m_rulesFile;
+}
+
+QString DirectorManager::rulesFileError() const
+{
+    return m_rulesFileError;
+}
+
+void DirectorManager::watchRulesFile()
+{
+    // Many editors replace the file instead of writing into it, and a
+    // replaced file is no longer watched: watch the folder as well
+    if (QFile::exists(m_rulesFile) && m_rulesWatcher.files().contains(m_rulesFile) == false)
+        m_rulesWatcher.addPath(m_rulesFile);
+    QString dir = QFileInfo(m_rulesFile).absolutePath();
+    if (m_rulesWatcher.directories().contains(dir) == false)
+        m_rulesWatcher.addPath(dir);
+}
+
+quint32 DirectorManager::functionByName(const QString &name) const
+{
+    foreach (Function *f, m_doc->functions())
+    {
+        if (f->name() == name)
+            return f->id();
+    }
+    return Function::invalidId();
+}
+
+void DirectorManager::slotRulesFileChanged()
+{
+    if (m_rulesFile.isEmpty() || QFile::exists(m_rulesFile) == false)
+        return;
+
+    // The folder is watched too: only a file that really changed is read
+    QFile file(m_rulesFile);
+    if (file.open(QIODevice::ReadOnly) == false)
+        return;
+    const QByteArray data = file.readAll();
+    file.close();
+    if (data == m_rulesFileData)
+    {
+        watchRulesFile();
+        return;
+    }
+
+    readRulesFile();
+    watchRulesFile();
+    emit rulesFileChanged();
+}
+
+void DirectorManager::slotRulesEdited()
+{
+    // Rules changed from inside the application (wizard, companions): the
+    // file follows. Not while the file itself is being read, and not when
+    // the project is being closed.
+    if (m_readingRulesFile || m_rulesFile.isEmpty() || m_engine.rules().isEmpty())
+        return;
+
+    writeRulesFile();
+    watchRulesFile();
+}
+
+bool DirectorManager::readRulesFile()
+{
+    QFile file(m_rulesFile);
+    if (file.open(QIODevice::ReadOnly) == false)
+    {
+        m_rulesFileError = tr("Cannot read %1").arg(m_rulesFile);
+        return false;
+    }
+    const QByteArray data = file.readAll();
+    file.close();
+    m_rulesFileData = data;
+
+    QJsonParseError parseError;
+    QJsonDocument json = QJsonDocument::fromJson(data, &parseError);
+    if (json.isObject() == false)
+    {
+        // Keep running with the rules there were: a half typed file must
+        // not take the show down
+        m_rulesFileError = tr("Line %1: %2")
+            .arg(data.left(parseError.offset).count('\n') + 1).arg(parseError.errorString());
+        log("rules file: " + m_rulesFileError);
+        return false;
+    }
+
+    const QJsonArray rulesJson = json.object().value("rules").toArray();
+    const QJsonObject overridesJson = json.object().value("overrides").toObject();
+    const bool overridesEdited = (overridesJson != m_rulesFileOverrides);
+
+    // Only the overrides were touched: the looks keep running as they are
+    if (rulesJson == m_rulesFileRules && m_engine.rules().isEmpty() == false)
+    {
+        m_rulesFileError.clear();
+        if (overridesEdited)
+        {
+            m_rulesFileOverrides = overridesJson;
+            applyOverrides(overridesJson);
+        }
+        return true;
+    }
+
+    QStringList missing;
+    QList<DirectorEngine::Rule> rules;
+
+    foreach (const QJsonValue &rv, rulesJson)
+    {
+        QJsonObject ro = rv.toObject();
+        DirectorEngine::Rule rule;
+        rule.name = ro.value("name").toString();
+        foreach (const QJsonValue &v, ro.value("sections").toArray())
+            rule.sections << v.toString();
+        foreach (const QJsonValue &v, ro.value("intensities").toArray())
+            rule.intensities << v.toString();
+        rule.bars = ro.value("bars").toInt(8);
+
+        QJsonObject layers = ro.value("layers").toObject();
+        for (auto it = layers.constBegin(); it != layers.constEnd(); ++it)
+        {
+            int layer = DirectorEngine::layerFromName(it.key());
+            if (layer < 0)
+            {
+                missing << tr("layer \"%1\"").arg(it.key());
+                continue;
+            }
+            foreach (const QJsonValue &lookValue, it.value().toArray())
+            {
+                DirectorEngine::Bundle bundle;
+                foreach (const QJsonValue &fv, lookValue.toArray())
+                {
+                    // A Function goes by its name, or by its number
+                    quint32 fid = fv.isString() ? functionByName(fv.toString()) : quint32(fv.toInt(-1));
+                    if (m_doc->function(fid) == nullptr)
+                        missing << (fv.isString() ? fv.toString() : QString::number(fv.toInt(-1)));
+                    else if (bundle.contains(fid) == false)
+                        bundle << fid;
+                }
+                if (bundle.isEmpty() == false)
+                    rule.layers[layer].append(bundle);
+            }
+        }
+
+        if (rule.isEmpty() == false)
+            rules << rule;
+    }
+
+    if (rules.isEmpty())
+    {
+        m_rulesFileError = tr("No usable rule in the file");
+        log("rules file: " + m_rulesFileError);
+        return false;
+    }
+
+    missing.removeDuplicates();
+    m_rulesFileError = missing.isEmpty() ? QString() : tr("Not found: %1").arg(missing.join(", "));
+
+    m_readingRulesFile = true;
+    replaceRules(rules);
+    m_readingRulesFile = false;
+    m_rulesFileRules = rulesJson;
+
+    if (overridesEdited)
+    {
+        m_rulesFileOverrides = overridesJson;
+        applyOverrides(overridesJson);
+    }
+
+    log(QString("rules file read: %1 rules%2").arg(rules.count())
+            .arg(m_rulesFileError.isEmpty() ? QString() : " (" + m_rulesFileError + ")"));
+    return true;
+}
+
+QJsonObject DirectorManager::overridesToJson() const
+{
+    QJsonObject o;
+    o.insert("section", forcedSection());
+    o.insert("intensity", forcedIntensity());
+    o.insert("hold", hold());
+    o.insert("blackout", blackout());
+    o.insert("strobeAllowed", strobeAllowed());
+    o.insert("laser", laserMode());
+    o.insert("color", forcedColor());
+    return o;
+}
+
+void DirectorManager::applyOverrides(const QJsonObject &o)
+{
+    // Only what the file names: a key left out is left alone
+    if (o.contains("section"))
+        forceSection(o.value("section").toString());
+    if (o.contains("intensity"))
+        forceIntensity(o.value("intensity").toString());
+    if (o.contains("strobeAllowed"))
+        setStrobeAllowed(o.value("strobeAllowed").toBool(true));
+    if (o.contains("laser"))
+        setLaserMode(o.value("laser").toString());
+    if (o.contains("color"))
+        forceColor(o.value("color").toString());
+    if (o.contains("hold"))
+        setHold(o.value("hold").toBool());
+    if (o.contains("blackout"))
+        setBlackout(o.value("blackout").toBool());
+    log("rules file: overrides applied");
+}
+
+QString DirectorManager::rulesStamp() const
+{
+    if (m_engine.rules().isEmpty())
+        return QString();
+    // Functions go by name here, so a project built again with the same
+    // looks under other numbers still counts as the same rules
+    const QByteArray data = QJsonDocument(rulesToJson()).toJson(QJsonDocument::Compact);
+    return QString::fromLatin1(QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex().left(16));
+}
+
+void DirectorManager::stampRulesFile()
+{
+    const QString stamp = rulesStamp();
+    if (stamp.isEmpty() || stamp == m_projectStamp)
+        return;
+    m_projectStamp = stamp;
+
+    QFile file(m_rulesFile);
+    if (file.open(QIODevice::ReadOnly) == false)
+        return;
+    QString text = QString::fromUtf8(file.readAll());
+    file.close();
+
+    // Only the stamp changes: the rest stays as its author wrote it
+    static const QRegularExpression re("(\"project\"\\s*:\\s*\")[0-9a-f]*(\")");
+    if (re.match(text).hasMatch() == false)
+        return;
+    text.replace(re, "\\1" + stamp + "\\2");
+
+    const QByteArray data = text.toUtf8();
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate) == false)
+        return;
+    file.write(data);
+    file.close();
+    m_rulesFileData = data;
+}
+
+QJsonArray DirectorManager::rulesToJson() const
+{
+    const QList<DirectorEngine::Rule> &rules = m_engine.rules();
+
+    QJsonArray rulesArray;
+    foreach (const DirectorEngine::Rule &rule, rules)
+    {
+        QJsonObject ro;
+        ro.insert("name", rule.name);
+        ro.insert("sections", QJsonArray::fromStringList(rule.sections));
+        ro.insert("intensities", QJsonArray::fromStringList(rule.intensities));
+        ro.insert("bars", rule.bars);
+
+        QJsonObject layers;
+        for (int l = 0; l < DirectorEngine::LayerCount; l++)
+        {
+            QJsonArray looks;
+            foreach (const DirectorEngine::Bundle &bundle, rule.layers[l])
+            {
+                QJsonArray look;
+                foreach (quint32 fid, bundle)
+                {
+                    Function *f = m_doc->function(fid);
+                    if (f == nullptr)
+                        continue;
+                    // By name when the name says which Function it is
+                    if (functionByName(f->name()) == fid)
+                        look.append(f->name());
+                    else
+                        look.append(int(fid));
+                }
+                looks.append(look);
+            }
+            layers.insert(DirectorEngine::layerName(l), looks);
+        }
+        ro.insert("layers", layers);
+        rulesArray.append(ro);
+    }
+
+    return rulesArray;
+}
+
+void DirectorManager::writeRulesFile()
+{
+    if (m_engine.rules().isEmpty())
+        return;
+
+    const QJsonArray rulesArray = rulesToJson();
+
+    // What the file says already: leave it as its author wrote it
+    if (rulesArray == m_rulesFileRules && QFile::exists(m_rulesFile))
+        return;
+
+    // The overrides stay as the file had them: the panel does not write
+    // here, or every button press would rewrite the file under the editor
+    if (m_rulesFileOverrides.isEmpty())
+        m_rulesFileOverrides = overridesToJson();
+
+    QJsonObject root;
+    root.insert("project", m_projectStamp);
+    root.insert("overrides", m_rulesFileOverrides);
+    root.insert("rules", rulesArray);
+    const QByteArray data = QJsonDocument(root).toJson(QJsonDocument::Indented);
+
+    // Do not touch a file that already says the same: an editor that has it
+    // open would ask to reload it for nothing
+    if (data == m_rulesFileData && QFile::exists(m_rulesFile))
+        return;
+
+    QFile file(m_rulesFile);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate) == false)
+    {
+        m_rulesFileError = tr("Cannot write %1").arg(m_rulesFile);
+        return;
+    }
+    file.write(data);
+    file.close();
+    m_rulesFileData = data;
+    m_rulesFileRules = rulesArray;
+    log("rules file written: " + m_rulesFile);
 }
