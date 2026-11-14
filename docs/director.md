@@ -67,8 +67,8 @@ Las barras llevan lo que el Director da a cualquier barra motorizada. Los Nova l
 | Función | Qué hace | Cuándo corre |
 | --- | --- | --- |
 | Novas - Spin | El cabezal gira de forma continua (canal 3 en 160) | Siempre que hay movimiento |
-| Novas - Laser | El láser verde queda encendido (canal 11 en 255). Va en su propia escena para que el override de láser pueda apagarlo o encenderlo | Siempre que hay movimiento |
-| Novas - Yellow strobe | Los dos LED amarillos del cabezal parpadean por su cuenta: luz dorada (canal 12) a tope y estrobo (canal 6) en 150 | Chorus, build y drop |
+| Novas - Laser | El láser verde queda encendido (canal 11 en 255). Va en su propia escena para que el override de láser pueda apagarlo o encenderlo | Chorus, build y drop; apagado en intro, verse y demás secciones tranquilas |
+| Novas - Yellow strobe | El estrobo del Nova (canal 6, shutter del haz) al máximo, con la luz dorada (canal 12) a tope | Chorus, build y drop |
 | Novas - Arc sweep | Barrido de unos 80° de pan en 5 segundos, con el tilt más alto al pasar por el centro | Un look más de la capa Movement |
 
 Los seis equipos van en el truss del fondo, apuntando hacia el frente. Los pares llevan lo que el Director da a cualquier par: color base, cambio de color en ritmo y estrobo como acento. Las posiciones de pan y tilt salen del wizard y no están ajustadas al equipo físico.
@@ -98,6 +98,17 @@ El Director crea tres paletas de color: «Director - Primary», «Director - Sec
 - **Layers**: qué corre en cada capa. «Pin» deja la capa como está aunque cambie la música. «Off» la apaga.
 - **Overrides**: el icono de los deslizadores de la cabecera abre el panel «Director Overrides», y se pone ámbar mientras haya algo forzado. El panel tiene una caja por tipo: sección, intensidad, color y controles en vivo («Hold» para congelar todo, «Next look» para pasar al siguiente candidato, «Blackout» y «Strobe» mientras se mantienen pulsados, y bloquear los strobes). El color forzado sustituye al primario y al secundario que mande la música; el botón del color en vigor lleva una paloma, y un segundo clic lo suelta. Si el proyecto tiene funciones que solo manejan un láser, aparece la caja «Laser overrides»: «Auto» deja que decidan las reglas, «Laser off» lo apaga al instante y lo mantiene apagado, y «Laser on» lo mantiene encendido aunque la regla en curso no lo use. «Release all» devuelve todo a la música. El panel de overrides sigue abierto aunque se cierre el del Director.
 - **Demo**: una canción sintética en bucle (intro, verse, build, drop, breakdown, build, drop, outro). Se puede cambiar el BPM y saltar a una sección, que entra en el siguiente compás.
+
+## Archivo de reglas
+
+Junto al proyecto hay un archivo de texto, `<proyecto>.director.json`, con las reglas del Director. Se crea solo la primera vez que se abre o se guarda el proyecto, y a partir de ahí manda sobre las reglas guardadas dentro del `.qxw`.
+
+El Director lo vuelve a leer cada vez que se guarda desde un editor, con el show corriendo: ajustar el comportamiento no requiere compilar ni reiniciar.
+
+- `rules`: una entrada por regla, con `name`, `sections`, `intensities`, `bars` y `layers`. Cada capa (`Base`, `Movement`, `Rhythm`, `Accent`) es una lista de looks, y cada look una lista de funciones por nombre (o por número, si el nombre está repetido).
+- `overrides`: `section`, `intensity`, `hold`, `blackout`, `strobeAllowed`, `laser` (`""`, `"on"`, `"off"`) y `color`. Se aplican cuando esa parte del archivo cambia; una clave que falta no se toca. El panel no escribe aquí.
+
+Si el archivo tiene un error, el Director sigue con las reglas que tenía y el panel muestra en rojo la línea del error o las funciones que no encontró. Los valores de cada escena (por ejemplo, el nivel del estrobo) no están en este archivo: se editan en la escena, dentro de la aplicación.
 
 ## Qué se guarda en el proyecto
 

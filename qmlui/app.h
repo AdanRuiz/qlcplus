@@ -356,6 +356,7 @@ public:
 
     /** Reset everything and start a new workspace */
     Q_INVOKABLE bool newWorkspace();
+    void applyDefaultPatch();
 
     /** Load the workspace with the given $fileName */
     Q_INVOKABLE bool loadWorkspace(const QString& fileName);

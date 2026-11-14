@@ -506,6 +506,7 @@ void InputOutputManager::slotAudioInputLevelChanged(double *spectrumBands, int s
 QVariant InputOutputManager::universeInputSources(int universe)
 {
     QVariantList inputSources;
+    int leading = 0;
     QString currPlugin;
     int currLine = -1;
     InputPatch *ip = m_ioMap->inputPatch(universe);
@@ -535,7 +536,11 @@ QVariant InputOutputManager::universeInputSources(int universe)
                 lineMap.insert("name", pLine);
                 lineMap.insert("line", i);
                 lineMap.insert("plugin", pluginName);
-                inputSources.append(lineMap);
+                // The music link is what this product is driven by: it leads the list
+                if (pluginName.contains("VertexAV", Qt::CaseInsensitive))
+                    inputSources.insert(leading++, lineMap);
+                else
+                    inputSources.append(lineMap);
             }
             i++;
         }
@@ -626,10 +631,18 @@ QVariant InputOutputManager::universeFeedbackSources(int universe)
     return QVariant::fromValue(feedbackSources);
 }
 
+/** The patch is part of the project, but it is the same rig the next time the
+ *  application starts without one: keep it as the default too */
+void InputOutputManager::saveDefaultPatch()
+{
+    m_ioMap->saveDefaults();
+}
+
 void InputOutputManager::setOutputPatch(int universe, QString plugin, QString line, int index)
 {
     m_ioMap->setOutputPatch(universe, plugin, "", "", line.toUInt(), false, index);
     m_doc->setModified();
+    saveDefaultPatch();
     emit outputCanConfigureChanged();
 }
 
@@ -637,6 +650,7 @@ void InputOutputManager::removeOutputPatch(int universe, int index)
 {
     m_ioMap->setOutputPatch(universe, KOutputNone, "", "", QLCIOPlugin::invalidLine(), false, index);
     m_doc->setModified();
+    saveDefaultPatch();
     emit outputCanConfigureChanged();
 }
 
@@ -644,6 +658,7 @@ void InputOutputManager::addInputPatch(int universe, QString plugin, QString lin
 {
     m_ioMap->setInputPatch(universe, plugin, "", "", line.toUInt());
     m_doc->setModified();
+    saveDefaultPatch();
     emit inputCanConfigureChanged();
 }
 
@@ -667,6 +682,7 @@ bool InputOutputManager::setFeedbackPatch(int universe, bool enable)
             {
                 m_ioMap->setOutputPatch(universe, patch->pluginName(), "", "", i, true);
                 m_doc->setModified();
+                saveDefaultPatch();
                 found = true;
                 break;
             }
@@ -678,6 +694,7 @@ bool InputOutputManager::setFeedbackPatch(int universe, bool enable)
     {
         m_ioMap->setOutputPatch(universe, KInputNone, "", "", QLCIOPlugin::invalidLine(), true);
         m_doc->setModified();
+        saveDefaultPatch();
     }
     return true;
 }
@@ -686,6 +703,7 @@ void InputOutputManager::setFeedbackLine(int universe, QString plugin, int line)
 {
     m_ioMap->setOutputPatch(universe, plugin, "", "", (quint32)line, true);
     m_doc->setModified();
+    saveDefaultPatch();
 }
 
 void InputOutputManager::removeInputPatch(int universe)
@@ -694,6 +712,7 @@ void InputOutputManager::removeInputPatch(int universe)
     if (m_ioMap->feedbackPatch(universe) != nullptr)
         m_ioMap->setOutputPatch(universe, KOutputNone, "", "", QLCIOPlugin::invalidLine(), true);
     m_doc->setModified();
+    saveDefaultPatch();
     emit inputCanConfigureChanged();
 }
 
@@ -701,6 +720,7 @@ void InputOutputManager::setInputProfile(int universe, QString profileName)
 {
     m_ioMap->setInputProfile(universe, profileName);
     m_doc->setModified();
+    saveDefaultPatch();
 }
 
 void InputOutputManager::configurePlugin(bool input)
@@ -1011,6 +1031,10 @@ void InputOutputManager::setBeatType(QString beatType)
         m_ioMap->setBeatGeneratorType(InputOutputMap::Disabled);
 
     setBpmNumber(m_ioMap->bpmNumber());
+
+    // Where the beat comes from is a fact of this computer's rig: remember it
+    QSettings settings;
+    settings.setValue(SETTINGS_BEAT_TYPE, m_beatType);
 
     emit beatTypeChanged(beatType);
 }
