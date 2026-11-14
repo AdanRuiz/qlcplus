@@ -1037,11 +1037,29 @@ void StageWizard::layoutGroupSpatially(FixtureGroup *group,
     // Nothing has been placed (every fixture still at the origin): a single row
     // in patch order is the only honest answer — inventing a square grid would
     // claim a spatial arrangement that doesn't exist.
+    // A fixture takes one cell per head, side by side: the ten LEDs of a bar
+    // are ten cells of the row. Counting one cell per fixture made the heads
+    // of a bar spill over the cells of its neighbours, which then pushed
+    // them out of the group.
+    auto cellsOf = [this](quint32 fxID) -> int
+    {
+        Fixture *fixture = m_doc->fixture(fxID);
+        return fixture != nullptr ? qMax(1, fixture->heads()) : 1;
+    };
+
     if (!anyPosition)
     {
-        group->setSize(QSize(fixtureIDs.count(), 1));
-        for (int i = 0; i < fixtureIDs.count(); i++)
-            group->assignFixture(fixtureIDs.at(i), QLCPoint(i, 0));
+        int width = 0;
+        for (quint32 fxID : fixtureIDs)
+            width += cellsOf(fxID);
+
+        group->setSize(QSize(width, 1));
+        int x = 0;
+        for (quint32 fxID : fixtureIDs)
+        {
+            group->assignFixture(fxID, QLCPoint(x, 0));
+            x += cellsOf(fxID);
+        }
         return;
     }
 
@@ -1075,9 +1093,17 @@ void StageWizard::layoutGroupSpatially(FixtureGroup *group,
 
     // Widest row sets the grid width; shorter rows simply leave cells empty,
     // which FixtureGroup handles (a hole in the map).
+    auto cellsOfRow = [&cellsOf](const QList<Placed> &row) -> int
+    {
+        int width = 0;
+        for (const Placed &fx : row)
+            width += cellsOf(fx.id);
+        return width;
+    };
+
     int cols = 0;
     for (const QList<Placed> &row : rows)
-        cols = qMax(cols, row.count());
+        cols = qMax(cols, cellsOfRow(row));
 
     // Row 0 of a FixtureGroup grid is the TOP of the matrix, and matrix
     // patterns are authored to run top-to-bottom. The audience reads the rig
@@ -1092,9 +1118,12 @@ void StageWizard::layoutGroupSpatially(FixtureGroup *group,
         const QList<Placed> &row = rows.at(r);
         // Centre a short row against the widest one, so a rig that narrows
         // towards the back keeps its shape instead of being flushed left.
-        const int offset = (cols - row.count()) / 2;
+        int x = (cols - cellsOfRow(row)) / 2;
         for (int c = 0; c < row.count(); c++)
-            group->assignFixture(row.at(c).id, QLCPoint(offset + c, r));
+        {
+            group->assignFixture(row.at(c).id, QLCPoint(x, r));
+            x += cellsOf(row.at(c).id);
+        }
     }
 }
 
