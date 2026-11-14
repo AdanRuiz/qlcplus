@@ -701,7 +701,7 @@ Rectangle
                 id: texChainTexture0
                 width: 1024
                 height: 1024
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -729,7 +729,7 @@ Rectangle
                 id: texChainTexture1
                 width: 512
                 height: 512
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -757,7 +757,7 @@ Rectangle
                 id: texChainTexture2
                 width: 256
                 height: 256
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -785,7 +785,7 @@ Rectangle
                 id: texChainTexture3
                 width: 128
                 height: 128
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -813,7 +813,7 @@ Rectangle
                 id: texChainTexture4
                 width: 64
                 height: 64
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -842,7 +842,7 @@ Rectangle
                     id: hdr0ColorTexture
                     width: 1024
                     height: 1024
-                    format: Texture.RGBA32F
+                    format: Texture.RGBA16F
                     generateMipMaps: false
                     magnificationFilter: Texture.Linear
                     minificationFilter: Texture.Linear
@@ -871,7 +871,7 @@ Rectangle
                     id: hdr1ColorTexture
                     width: 1024
                     height: 1024
-                    format: Texture.RGBA32F
+                    format: Texture.RGBA16F
                     generateMipMaps: false
                     magnificationFilter: Texture.Linear
                     minificationFilter: Texture.Linear

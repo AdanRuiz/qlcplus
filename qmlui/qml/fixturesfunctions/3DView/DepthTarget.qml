@@ -27,8 +27,8 @@ RenderTarget
         {
             width: 1024
             height: 1024
-            // We use RGBA32F here instead of a more fitting format because
-            // OpenGL vendors might not support other formats
+            // World positions, where each beam starts: these stay at full
+            // precision, unlike the colour targets
             format: Texture.RGBA32F
             generateMipMaps: false
             magnificationFilter: Texture.Nearest
