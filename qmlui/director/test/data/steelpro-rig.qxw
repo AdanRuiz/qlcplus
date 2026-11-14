@@ -1772,8 +1772,8 @@
    <ValueStyle>0</ValueStyle>
    <Grid Width="6" Height="4" Depth="6" Units="0" POV="1"/>
    <StageItem>2</StageItem>
-   <FxItem ID="0" XPos="1500" YPos="4300" ZPos="0" XRot="260"/>
-   <FxItem ID="1" XPos="3500" YPos="4300" ZPos="0" XRot="260"/>
+   <FxItem ID="0" XPos="1500" YPos="4300" ZPos="0" XRot="270"/>
+   <FxItem ID="1" XPos="3500" YPos="4300" ZPos="0" XRot="270"/>
    <FxItem ID="2" XPos="300" YPos="3850" ZPos="-100"/>
    <FxItem ID="3" XPos="5450" YPos="3850" ZPos="-100"/>
    <FxItem ID="4" XPos="900" YPos="3700" ZPos="0" XRot="35"/>

@@ -446,7 +446,10 @@ int main(int argc, char *argv[])
             QVector3D pos = monitor->fixturePosition(bars.at(i), 0, 0);
             pos.setZ(0.0f);
             monitor->setFixturePosition(bars.at(i), 0, 0, pos);
-            monitor->setFixtureRotation(bars.at(i), 0, 0, QVector3D(260.0f, 0.0f, 0.0f));
+            // The motor of the bar covers 180 degrees. A quarter turn past head
+            // down leaves the middle of that range facing the audience: the
+            // LEDs point to the front and the tilt sweep moves them up and down
+            monitor->setFixtureRotation(bars.at(i), 0, 0, QVector3D(270.0f, 0.0f, 0.0f));
         }
     }
 

@@ -43,6 +43,11 @@ Based on the QLC+ 5.3.0 engine.
   computer. A universe that a project leaves empty, and a new project, take
   the last ones used instead of being left unplugged.
 - VertexAV Link leads the list of inputs.
+- SteelPro 1030 bar: declared as a beam bar with a 5 degree lens, so the 3D
+  view draws its ten beams and tilts them. In the SteelPro rig the two bars
+  hang from the rear truss aimed at the stage.
+- The 3D view starts from further away, with the whole stage and the beams
+  above the truss in sight.
 - SteelPro Nova: its strobe channel is the shutter of the beam, so the
   wizard and the strobe button of the Director use it. It runs at full in
   the loud sections, and the laser stays off in the quiet ones.
