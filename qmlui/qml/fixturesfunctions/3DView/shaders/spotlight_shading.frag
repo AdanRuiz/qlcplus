@@ -43,6 +43,7 @@ uniform float coneDistCutoff;
 uniform mat4 lightViewMatrix;
 uniform mat4 lightViewProjectionMatrix;
 uniform mat4 lightProjectionMatrix;
+uniform mat4 lightViewProjectionScaleAndOffsetMatrix;
 
 uniform sampler2D goboTex;
 uniform sampler2D shadowTex;
@@ -66,9 +67,10 @@ void main()
 
     float shadowMask = 1.0;
     if (useShadows == 1) {
-        vec4 p = lightProjectionMatrix * lightViewMatrix * vec4(position.xyz, 1.0);
-        float curZ = (p.z / p.w) * 0.5 + 0.5;
-        float refZ = SAMPLE_TEX2D(shadowTex, ((p.xy) / p.w) * 0.5 + vec2(0.5)).r;
+        // the shadow map may belong to several emitters: it has a matrix of its own
+        vec4 p = lightViewProjectionScaleAndOffsetMatrix * vec4(position.xyz, 1.0);
+        float curZ = p.z / p.w;
+        float refZ = SAMPLE_TEX2D(shadowTex, p.xy / p.w).r;
         // The margin grows as the beam lands at a shallower angle: with a
         // fixed one, a surface seen almost edge on from the light shadows
         // itself in stripes

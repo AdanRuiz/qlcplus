@@ -139,6 +139,72 @@ Entity
 
     property var headsList: []
 
+    /* ****************** Shadow map of the fixture ****************** */
+    /* The emitters of a bar are parallel and next to each other, and a shadow
+       map each meant drawing the whole scene once per emitter: ten times for
+       a ten LED bar. They share one instead, seen from behind the fixture,
+       from where a single frustum holds every cone: the frustum of an emitter
+       with its mouth widened by half the size of the fixture. What an emitter
+       sees and what the fixture sees differ by less than that half size, which
+       only shows as a slightly off shadow edge of something close to the bar.
+
+       It is what 3DView.qml hands to RenderShadowMapFilter in place of an
+       emitter, so it carries the same properties. */
+    readonly property Layer sharedShadingLayer: Layer { }
+    property alias sharedShadow: sharedShadowEntity
+    property real maxDimmer: 0
+
+    Entity
+    {
+        id: sharedShadowEntity
+
+        property real lightIntensity: fixtureEntity.maxDimmer * fixtureEntity.shutterValue
+        property int shadowMapSize: 2048
+
+        property real mouthRadius: 0.5 * Math.max(fixtureEntity.phySize.x, fixtureEntity.phySize.z) + fixtureEntity.coneTopRadius
+        property real farRadius: fixtureEntity.distCutoff * Math.tan(fixtureEntity.cutoffAngle) + mouthRadius
+
+        property matrix4x4 lightViewMatrix:
+            fixtureEntity.lastLightMatrix !== undefined && fixtureEntity.lastLightPos !== undefined ?
+                Math3D.getLightViewMatrix(fixtureEntity.lastLightMatrix, 0, fixtureEntity.tiltRotation, fixtureEntity.lastLightPos) :
+                Qt.matrix4x4()
+        property matrix4x4 lightProjectionMatrix:
+            fixtureEntity.coneTopRadius > 0 && farRadius > mouthRadius ?
+                Math3D.getLightProjectionMatrix(fixtureEntity.distCutoff, farRadius, mouthRadius,
+                                                fixtureEntity.headLength, fixtureEntity.cutoffAngle) :
+                Qt.matrix4x4()
+        property matrix4x4 lightViewProjectionMatrix: lightProjectionMatrix.times(lightViewMatrix)
+        property matrix4x4 shadowMatrix: Math3D.getLightViewProjectionScaleOffsetMatrix(lightViewProjectionMatrix)
+
+        property Texture2D depthTex:
+            Texture2D
+            {
+                width: sharedShadowEntity.shadowMapSize
+                height: sharedShadowEntity.shadowMapSize
+                format: Texture.D32F
+                generateMipMaps: false
+                magnificationFilter: Texture.Nearest
+                minificationFilter: Texture.Nearest
+                wrapMode
+                {
+                    x: WrapMode.ClampToEdge
+                    y: WrapMode.ClampToEdge
+                }
+            }
+
+        property RenderTarget shadowMap:
+            RenderTarget
+            {
+                attachments: [
+                    RenderTargetOutput
+                    {
+                        attachmentPoint: RenderTargetOutput.Depth
+                        texture: sharedShadowEntity.depthTex
+                    }
+                ] // attachments
+            }
+    }
+
     function bindTiltTransform(t, maxDegrees)
     {
         console.log("Binding tilt ----")
@@ -188,6 +254,9 @@ Entity
             var headNode = component.createObject(fixtureEntity,
             {
                 "headIndex": i,
+                "sharedShadow": true,
+                "spotlightShadingLayer": fixtureEntity.sharedShadingLayer,
+                "shadowMatrix": Qt.binding(function() { return sharedShadowEntity.shadowMatrix }),
                 "enabled": Qt.binding(function() { return fixtureEntity.enabled }),
                 "lightDir": Qt.binding(function() { return fixtureEntity.lightDir }),
                 "shutterValue": Qt.binding(function() { return fixtureEntity.shutterValue }),
@@ -299,6 +368,12 @@ Entity
     {
         if (headIndex >= 0 && headIndex < headsList.length)
             headsList[headIndex].dimmerValue = intensity
+
+        // the shadow map of the fixture is drawn while any emitter is lit
+        var most = 0
+        for (var i = 0; i < headsList.length; i++)
+            most = Math.max(most, headsList[i].dimmerValue)
+        maxDimmer = most
     }
 
     function setHeadRGBColor(headIndex, color)

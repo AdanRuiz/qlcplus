@@ -110,7 +110,16 @@ Rectangle
             {
                 fixtureItem = fixtures[ic]
 
-                if (fixtureItem.useShadows)
+                if (fixtureItem.useShadows && fixtureItem.sharedShadow)
+                {
+                    // one map for all the emitters of the fixture
+                    component.createObject(frameGraph.myShadowFrameGraphNode,
+                    {
+                        "fixtureItem": fixtureItem.sharedShadow,
+                        "layers": sceneEntity.deferredLayer
+                    });
+                }
+                else if (fixtureItem.useShadows)
                 {
                     for (iHead = 0; iHead < fixtureItem.headsNumber; iHead++)
                     {
@@ -221,6 +230,11 @@ Rectangle
                 "frameTarget": frameTarget
             });
 
+            var gateComponent = Qt.createComponent("LightGate.qml");
+            if (gateComponent.status === Component.Error)
+                console.log("Error loading component:", gateComponent.errorString())
+            var gate
+
             if (fixtures.length)
             {
                 component = Qt.createComponent("SpotlightShadingFilter.qml");
@@ -235,13 +249,31 @@ Rectangle
                 if (fixtureItem.useScattering === false)
                     continue
 
+                if (fixtureItem.sharedShadow)
+                {
+                    // the emitters share the shadow map, so they can be shaded
+                    // in one pass too: each cone carries its own uniforms
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector,
+                                                      { "fixtureItem": fixtureItem.sharedShadow })
+                    component.createObject(gate,
+                    {
+                        "gBuffer": gBufferTarget,
+                        "shadowTex": fixtureItem.useShadows ? fixtureItem.sharedShadow.depthTex : null,
+                        "useShadows": fixtureItem.useShadows,
+                        "spotlightShadingLayer": fixtureItem.sharedShadingLayer,
+                        "frameTarget": frameTarget
+                    });
+                    continue
+                }
+
                 for (iHead = 0; iHead < fixtureItem.headsNumber; iHead++)
                 {
                     headEntity = fixtureItem.getHead(iHead)
                     if (!headEntity)
                         continue
 
-                    component.createObject(frameGraph.myCameraSelector,
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector, { "fixtureItem": headEntity })
+                    component.createObject(gate,
                     {
                         "gBuffer": gBufferTarget,
                         // heads that don't cast shadows have no shadow map at all
@@ -252,6 +284,12 @@ Rectangle
                     });
                 }
             }
+
+            // the beams in the air start from black on every frame
+            component = Qt.createComponent("ClearTargetFilter.qml");
+            if (component.status === Component.Error)
+                console.log("Error loading component:", component.errorString())
+            component.createObject(frameGraph.myCameraSelector, { "target": scatterTarget });
 
             if (fixtures.length)
             {
@@ -277,20 +315,24 @@ Rectangle
                     if (!headEntity)
                         continue
 
-                    component.createObject(frameGraph.myCameraSelector,
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector, { "fixtureItem": headEntity })
+
+                    component.createObject(gate,
                     {
                         "frontDepth": depthTarget,
                         "outputDepthLayer": headEntity.outputDepthLayer
                     });
 
-                    component2.createObject(frameGraph.myCameraSelector,
+                    component2.createObject(gate,
                     {
                         "fixtureItem": headEntity,
                         "frontDepth": depthTarget,
                         "gBuffer": gBufferTarget,
                         "spotlightScatteringLayer": headEntity.spotlightScatteringLayer,
-                        "shadowTex": fixtureItem.useShadows ? headEntity.depthTex : null,
-                        "frameTarget": frameTarget,
+                        "shadowTex": fixtureItem.useShadows
+                                     ? (fixtureItem.sharedShadow ? fixtureItem.sharedShadow.depthTex : headEntity.depthTex)
+                                     : null,
+                        "frameTarget": scatterTarget,
                         "useShadows": fixtureItem.useShadows
                     });
                 }
@@ -304,6 +346,7 @@ Rectangle
             {
                 "hdrTexture": frameTarget.color,
                 "bloomTexture": texChainTextures[0],
+                "scatterTexture": scatterTexture,
                 "outRenderTarget": hdr0RenderTarget,
                 "screenQuadGammaCorrectLayer": screenQuadGammaCorrectEntity.layer
             });
@@ -621,12 +664,44 @@ Rectangle
 
             FrameTarget { id: frameTarget }
 
+            /* The beams in the air are drawn at half the size of the frame and
+               added to it at the end. They are soft by nature, so nothing is
+               lost, and marching through each cone is by far what costs the
+               graphics card most: a quarter of the pixels is a quarter of it. */
+            Texture2D
+            {
+                id: scatterTexture
+                width: 512
+                height: 512
+                format: Texture.RGBA16F
+                generateMipMaps: false
+                magnificationFilter: Texture.Linear
+                minificationFilter: Texture.Linear
+                wrapMode
+                {
+                    x: WrapMode.ClampToEdge
+                    y: WrapMode.ClampToEdge
+                }
+            }
+
+            RenderTarget
+            {
+                id: scatterTarget
+                attachments: [
+                    RenderTargetOutput
+                    {
+                        attachmentPoint: RenderTargetOutput.Color0
+                        texture: scatterTexture
+                    }
+                ]
+            }
+
             Texture2D
             {
                 id: texChainTexture0
                 width: 1024
                 height: 1024
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -654,7 +729,7 @@ Rectangle
                 id: texChainTexture1
                 width: 512
                 height: 512
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -682,7 +757,7 @@ Rectangle
                 id: texChainTexture2
                 width: 256
                 height: 256
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -710,7 +785,7 @@ Rectangle
                 id: texChainTexture3
                 width: 128
                 height: 128
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -738,7 +813,7 @@ Rectangle
                 id: texChainTexture4
                 width: 64
                 height: 64
-                format: Texture.RGBA32F
+                format: Texture.RGBA16F
                 generateMipMaps: false
                 magnificationFilter: Texture.Linear
                 minificationFilter: Texture.Linear
@@ -767,7 +842,7 @@ Rectangle
                     id: hdr0ColorTexture
                     width: 1024
                     height: 1024
-                    format: Texture.RGBA32F
+                    format: Texture.RGBA16F
                     generateMipMaps: false
                     magnificationFilter: Texture.Linear
                     minificationFilter: Texture.Linear
@@ -796,7 +871,7 @@ Rectangle
                     id: hdr1ColorTexture
                     width: 1024
                     height: 1024
-                    format: Texture.RGBA32F
+                    format: Texture.RGBA16F
                     generateMipMaps: false
                     magnificationFilter: Texture.Linear
                     minificationFilter: Texture.Linear

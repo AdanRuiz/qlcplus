@@ -78,8 +78,14 @@ Entity
                         value: mtl.fxItem ? mtl.fxItem.lightProjectionMatrix : Qt.matrix4x4() },
             Parameter { name: "lightViewProjectionMatrix";
                         value: mtl.fxItem ? mtl.fxItem.lightViewProjectionMatrix : Qt.matrix4x4() },
+            /* Where a point falls in the shadow map. The emitters of a multi
+               beam fixture share one map, seen from behind all of them, so
+               this is not always the matrix of the emitter itself */
             Parameter { name: "lightViewProjectionScaleAndOffsetMatrix";
-                        value: mtl.fxItem ? mtl.fxItem.lightViewProjectionScaleAndOffsetMatrix : Qt.matrix4x4() },
+                        value: mtl.fxItem ? (mtl.fxItem.shadowMatrix !== undefined
+                                                 ? mtl.fxItem.shadowMatrix
+                                                 : mtl.fxItem.lightViewProjectionScaleAndOffsetMatrix)
+                                          : Qt.matrix4x4() },
 
             Parameter { name: "smokeAmount"; value: View3D.smokeAmount },
             Parameter { name: "goboTex"; value: mtl.fxItem ? mtl.fxItem.goboTexture : null },

@@ -570,6 +570,21 @@ Popup
 
         ContextMenuEntry
         {
+            id: graphicsConfig
+            visible: Qt.platform.os === "windows"
+            height: visible ? iconHeight + 6 : 0
+            imgSource: "qrc:/configure.svg"
+            entryText: qsTr("Graphics card")
+            onEntered: submenuItem = null
+            onClicked:
+            {
+                menuRoot.close()
+                graphicsCardPopup.open()
+            }
+        }
+
+        ContextMenuEntry
+        {
             id: uiConfig
             imgSource: "qrc:/configure.svg"
             entryText: qsTr("UI Settings")

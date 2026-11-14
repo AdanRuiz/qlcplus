@@ -39,6 +39,12 @@ Based on the QLC+ 5.3.0 engine.
   an empty one.
 - SteelPro 1030 Bar and SteelPro Nova fixture definitions are installed
   with the application, under `resources/fixtures/SteelPro`.
+- The application asks for the dedicated graphics card on computers with
+  two, where Windows would otherwise give it the integrated one. "Graphics
+  card", in the Actions menu, shows the card in use and lets the user pick
+  another; it takes effect the next time the application starts.
+- `VERTEXAV_FPS` names a file that gets the frame rate of the application
+  and the graphics card in use every two seconds.
 - Optional log of the health of the machine (`--sysmon`): memory,
   processor load and temperatures, to find out why a computer hangs or
   powers off during a show.
@@ -49,6 +55,12 @@ Based on the QLC+ 5.3.0 engine.
   computer. A universe that a project leaves empty, and a new project, take
   the last ones used instead of being left unplugged.
 - VertexAV Link leads the list of inputs.
+- The 3D view is lighter: the emitters of a bar share one shadow map and
+  one shading pass, a light that stands still keeps its shadow map, the
+  passes of a light that is off are skipped, the beams in the air are drawn
+  at half size and the render targets use half floats. With the SteelPro
+  rig on a laptop with an RTX 4060 it went from 13 frames per second (on
+  the integrated card it was getting) to the 60 of the display.
 - SteelPro 1030 bar: declared as a beam bar with a 5 degree lens, so the 3D
   view draws its ten beams and tilts them. In the SteelPro rig the two bars
   hang from the rear truss aimed at the stage.

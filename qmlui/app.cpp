@@ -31,6 +31,10 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QSettings>
+#include <QOpenGLFunctions>
+#include <QTimer>
+#include <QTime>
+#include <QFile>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPrinter>
@@ -73,6 +77,7 @@
 #include "qlcfile.h"
 #include "outputpatch.h"
 #include "inputpatch.h"
+#include "graphicscard.h"
 
 #define SETTINGS_GEOMETRY      QStringLiteral("workspace/windowrect")
 #define SETTINGS_WORKINGPATH   QStringLiteral("workspace/workingpath")
@@ -130,6 +135,43 @@ App::App()
     connect(this, &App::screenChanged, this, &App::slotScreenChanged);
     connect(this, SIGNAL(closing(QQuickCloseEvent*)), this, SLOT(slotClosing()));
     connect(this, &App::sceneGraphInitialized, this, &App::slotSceneGraphInitialized);
+
+    // Which card is drawing. Asked on the render thread, where the context
+    // is current, and handed over to this one
+    connect(this, &App::sceneGraphInitialized, this, [this]()
+    {
+        QOpenGLContext *context = QOpenGLContext::currentContext();
+        if (context == nullptr)
+            return;
+        const QString name = QString::fromLatin1(
+            reinterpret_cast<const char *>(context->functions()->glGetString(GL_RENDERER)));
+        QMetaObject::invokeMethod(this, [this, name]()
+        {
+            m_graphicsRenderer = name;
+            emit graphicsRendererChanged();
+        }, Qt::QueuedConnection);
+    }, Qt::DirectConnection);
+
+    // Optional frame rate log, to measure the 3D view: one line every two
+    // seconds in the file named by VERTEXAV_FPS
+    const QString fpsLog = qEnvironmentVariable("VERTEXAV_FPS");
+    if (fpsLog.isEmpty() == false)
+    {
+        connect(this, &App::frameSwapped, this, [this]() { m_frameCount++; });
+        QTimer *fpsTimer = new QTimer(this);
+        fpsTimer->setInterval(2000);
+        connect(fpsTimer, &QTimer::timeout, this, [this, fpsLog]()
+        {
+            QFile file(fpsLog);
+            if (file.open(QIODevice::Append | QIODevice::Text))
+            {
+                file.write(QString("%1 fps %2 %3\n").arg(QTime::currentTime().toString("HH:mm:ss"))
+                               .arg(m_frameCount / 2.0, 0, 'f', 1).arg(m_graphicsRenderer).toUtf8());
+            }
+            m_frameCount = 0;
+        });
+        fpsTimer->start();
+    }
     qApp->installEventFilter(this);
 }
 
@@ -536,6 +578,29 @@ bool App::eventFilter(QObject *obj, QEvent *event)
 void App::slotSceneGraphInitialized()
 {
     // TODO: Qt6
+}
+
+int App::graphicsCard() const
+{
+    return GraphicsCard::preference();
+}
+
+void App::setGraphicsCard(int preference)
+{
+    if (preference == GraphicsCard::preference())
+        return;
+    GraphicsCard::setPreference(preference);
+    emit graphicsCardChanged();
+}
+
+QStringList App::graphicsCardNames() const
+{
+    return GraphicsCard::cardNames();
+}
+
+QString App::graphicsRenderer() const
+{
+    return m_graphicsRenderer;
 }
 
 void App::slotScreenChanged(QScreen *screen)

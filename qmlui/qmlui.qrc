@@ -98,6 +98,7 @@
     <file alias="PopupRenameItems.qml">qml/popup/PopupRenameItems.qml</file>
     <file alias="PopupDMXDump.qml">qml/popup/PopupDMXDump.qml</file>
     <file alias="PopupStartupProject.qml">qml/popup/PopupStartupProject.qml</file>
+    <file alias="PopupGraphicsCard.qml">qml/popup/PopupGraphicsCard.qml</file>
     <file alias="PopupMonitor.qml">qml/popup/PopupMonitor.qml</file>
     <file alias="PopupNetworkClient.qml">qml/popup/PopupNetworkClient.qml</file>
     <file alias="PopupNetworkConnect.qml">qml/popup/PopupNetworkConnect.qml</file>
@@ -197,6 +198,8 @@
     <file alias="RenderSelectionBoxesFilter.qml">qml/fixturesfunctions/3DView/RenderSelectionBoxesFilter.qml</file>
     <file alias="OutputFrontDepthFilter.qml">qml/fixturesfunctions/3DView/OutputFrontDepthFilter.qml</file>
     <file alias="RenderShadowMapFilter.qml">qml/fixturesfunctions/3DView/RenderShadowMapFilter.qml</file>
+    <file alias="LightGate.qml">qml/fixturesfunctions/3DView/LightGate.qml</file>
+    <file alias="ClearTargetFilter.qml">qml/fixturesfunctions/3DView/ClearTargetFilter.qml</file>
     <file alias="GrabBrightFilter.qml">qml/fixturesfunctions/3DView/GrabBrightFilter.qml</file>
     <file alias="DownsampleFilter.qml">qml/fixturesfunctions/3DView/DownsampleFilter.qml</file>
     <file alias="UpsampleFilter.qml">qml/fixturesfunctions/3DView/UpsampleFilter.qml</file>

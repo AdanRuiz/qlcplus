@@ -23,11 +23,22 @@ DECLARE_FRAG_COLOR
 
 uniform sampler2D hdrTex;
 uniform sampler2D bloomTex;
+uniform sampler2D scatterTex;
 
 void main()
 {
     vec3 hdrColor = SAMPLE_TEX2D(hdrTex, fsUv).rgb;
     hdrColor += 0.5 * SAMPLE_TEX2D(bloomTex, fsUv).rgb;
+    // The beams in the air: half size, stretched over the frame. Five taps
+    // spread the grain that the ray marching starts each ray with, which
+    // shows more now that every sample covers four pixels.
+    vec2 st = vec2(1.0 / 512.0);
+    vec3 beams = SAMPLE_TEX2D(scatterTex, fsUv).rgb * 0.4;
+    beams += SAMPLE_TEX2D(scatterTex, fsUv + vec2( st.x,  st.y)).rgb * 0.15;
+    beams += SAMPLE_TEX2D(scatterTex, fsUv + vec2(-st.x,  st.y)).rgb * 0.15;
+    beams += SAMPLE_TEX2D(scatterTex, fsUv + vec2( st.x, -st.y)).rgb * 0.15;
+    beams += SAMPLE_TEX2D(scatterTex, fsUv + vec2(-st.x, -st.y)).rgb * 0.15;
+    hdrColor += beams;
     vec3 finalColor = vec3(1.0) - exp(-hdrColor * 1.0);
 
     MGL_FRAG_COLOR = vec4(pow(finalColor, vec3(1.0 / 2.2)), 1.0);

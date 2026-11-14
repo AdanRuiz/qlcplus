@@ -1771,6 +1771,7 @@ void MainView3D::updateFixtureSelection(quint32 itemID, bool enable)
 
 void MainView3D::updateFixturePosition(quint32 itemID, QVector3D pos)
 {
+    emit shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -1985,6 +1986,7 @@ QVector3D MainView3D::fixtureDrawnSize(quint32 fixtureID) const
 
 void MainView3D::updateFixtureRotation(quint32 itemID, QVector3D degrees)
 {
+    emit shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2086,6 +2088,7 @@ void MainView3D::updateLightMatrix(SceneItem *mesh, quint32 itemID)
 
 void MainView3D::updateFixtureScale(quint32 itemID, QVector3D origSize)
 {
+    emit shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2110,6 +2113,7 @@ void MainView3D::updateFixtureScale(quint32 itemID, QVector3D origSize)
 
 void MainView3D::removeFixtureItem(quint32 itemID)
 {
+    emit shadowsInvalidated();
     if (isEnabled() == false || m_entitiesMap.contains(itemID) == false)
         return;
 
@@ -2146,6 +2150,7 @@ void MainView3D::removeFixtureItem(quint32 itemID)
 
 void MainView3D::createGenericItem(QString filename, int itemID)
 {
+    emit shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2414,6 +2419,7 @@ void MainView3D::toggleGenericItemsLock()
 
 void MainView3D::removeSelectedGenericItems()
 {
+    emit shadowsInvalidated();
     for (int &id : m_genericSelectedItems)
     {
         SceneItem *meshRef = m_genericMap.take(id);
@@ -2491,6 +2497,7 @@ QVariant MainView3D::genericItemsList() const
 
 void MainView3D::updateGenericItemPosition(quint32 itemID, QVector3D pos) const
 {
+    emit const_cast<MainView3D *>(this)->shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2541,6 +2548,7 @@ void MainView3D::setGenericItemsPosition(QVector3D pos)
 
 void MainView3D::updateGenericItemRotation(quint32 itemID, QVector3D rot) const
 {
+    emit const_cast<MainView3D *>(this)->shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2594,6 +2602,7 @@ void MainView3D::setGenericItemsRotation(QVector3D rot)
 
 void MainView3D::updateGenericItemScale(quint32 itemID, QVector3D scale) const
 {
+    emit const_cast<MainView3D *>(this)->shadowsInvalidated();
     if (isEnabled() == false)
         return;
 
@@ -2761,6 +2770,7 @@ void MainView3D::setStageIndex(int stageIndex)
 
 void MainView3D::createStage()
 {
+    emit shadowsInvalidated();
     if (m_sceneRootEntity == nullptr)
         return;
 
