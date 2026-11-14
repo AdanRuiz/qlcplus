@@ -64,7 +64,6 @@ float hash(float n)
 void main()
 {
 
-    vec3 l = lightDir;
     vec3 rd = normalize(fsPos - eyePosition); // ray marching direction.
 
     vec3 begP;
@@ -109,44 +108,47 @@ void main()
 
     float accum = 0.0;
     int i;
-    float beta = 2.0e-5;
 
-    // precalculate fixed math
-    float g = 0.67;
-    float pmFactor = ((1.0) / (4.0 * 3.14)) * ((3.0 * (1.0 - g * g)) / (2.0 * (2.0 + g * g)));
+    // Everything that does not change along the ray is worked out once. The
+    // light view and the shadow map lookups are affine in the position, so
+    // each is one matrix product for the start of the ray and one for a step,
+    // and then an addition per step instead of a product.
+    vec3 stepVec = rd * stepLength;
+
+    vec3 viewPos = (lightViewMatrix * vec4(p, 1.0)).xyz;
+    vec3 viewStep = (lightViewMatrix * vec4(stepVec, 0.0)).xyz;
+
+    vec4 shadowPos = lightViewProjectionScaleAndOffsetMatrix * vec4(p, 1.0);
+    vec4 shadowStep = lightViewProjectionScaleAndOffsetMatrix * vec4(stepVec, 0.0);
+
+    mat2 goboMatrix = mat2(goboRotation.x, goboRotation.y, goboRotation.z, goboRotation.w);
+    float radiusSlope = (coneBottomRadius - coneTopRadius) / coneDistCutoff;
 
     for (i = 0; i < raymarchSteps; ++i)
     {
-        float shadowMask = 1.0f;
-        if(useShadows == 1)
+        float shadowMask = 1.0;
+        if (useShadows == 1)
         {
-            vec4 q = (lightViewProjectionScaleAndOffsetMatrix * vec4(p, 1.0));
-            float curZ = q.z / q.w;
-            float refZ = SAMPLE_TEX2D(shadowTex, (q.xy / q.w)).r;
+            float curZ = shadowPos.z / shadowPos.w;
+            float refZ = SAMPLE_TEX2D(shadowTex, shadowPos.xy / shadowPos.w).r;
             shadowMask = (curZ < refZ ? 1.0 : 0.0);
         }
 
         float dist = distance(p, lightPos);
-        float cos_theta = dot(l, -rd);
-        float pm = pmFactor * ((1.0 + cos_theta * cos_theta) / (pow(1.0 + g * g - 2.0 * g * cos_theta, 3.0 / 2.0)));
-        vec3 pf = p * 0.5;
 
-        vec4 myq = lightViewMatrix * vec4(p.xyz, 1.0);
-        float r = coneTopRadius + (coneBottomRadius - coneTopRadius) * ((abs(myq.z) - 0.5 * headLength) / coneDistCutoff);
-        vec2 tc = mat2x2(goboRotation.x, goboRotation.y, goboRotation.z, goboRotation.w) * (((-myq.xy) * (1.0 / r))) * 0.5 + 0.5;
+        float r = coneTopRadius + radiusSlope * (abs(viewPos.z) - 0.5 * headLength);
+        vec2 tc = goboMatrix * (-viewPos.xy / r) * 0.5 + 0.5;
 
-        vec4 gSample = SAMPLE_TEX2D(goboTex, tc.xy);
-
+        vec4 gSample = SAMPLE_TEX2D(goboTex, tc);
         float goboMask = gSample.a * gSample.r;
 
-        float contrib =  (1.0 / (1.0  + 0.09 * dist + 0.032 * dist * dist)) * stepLength;
+        float contrib = (1.0 / (1.0 + 0.09 * dist + 0.032 * dist * dist)) * stepLength;
 
-        contrib *= shadowMask;
-        contrib *= goboMask;
+        accum += contrib * shadowMask * goboMask;
 
-        accum += contrib;
-
-        p += rd * stepLength;
+        p += stepVec;
+        viewPos += viewStep;
+        shadowPos += shadowStep;
     }
     MGL_FRAG_COLOR = vec4(accum * lightIntensity * smokeAmount * lightColor, 0.0);
     //MGL_FRAG_COLOR = vec4(1.0, 0.0, 0.0, 0.0);
