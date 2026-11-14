@@ -110,7 +110,16 @@ Rectangle
             {
                 fixtureItem = fixtures[ic]
 
-                if (fixtureItem.useShadows)
+                if (fixtureItem.useShadows && fixtureItem.sharedShadow)
+                {
+                    // one map for all the emitters of the fixture
+                    component.createObject(frameGraph.myShadowFrameGraphNode,
+                    {
+                        "fixtureItem": fixtureItem.sharedShadow,
+                        "layers": sceneEntity.deferredLayer
+                    });
+                }
+                else if (fixtureItem.useShadows)
                 {
                     for (iHead = 0; iHead < fixtureItem.headsNumber; iHead++)
                     {
@@ -221,6 +230,11 @@ Rectangle
                 "frameTarget": frameTarget
             });
 
+            var gateComponent = Qt.createComponent("LightGate.qml");
+            if (gateComponent.status === Component.Error)
+                console.log("Error loading component:", gateComponent.errorString())
+            var gate
+
             if (fixtures.length)
             {
                 component = Qt.createComponent("SpotlightShadingFilter.qml");
@@ -235,13 +249,31 @@ Rectangle
                 if (fixtureItem.useScattering === false)
                     continue
 
+                if (fixtureItem.sharedShadow)
+                {
+                    // the emitters share the shadow map, so they can be shaded
+                    // in one pass too: each cone carries its own uniforms
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector,
+                                                      { "fixtureItem": fixtureItem.sharedShadow })
+                    component.createObject(gate,
+                    {
+                        "gBuffer": gBufferTarget,
+                        "shadowTex": fixtureItem.useShadows ? fixtureItem.sharedShadow.depthTex : null,
+                        "useShadows": fixtureItem.useShadows,
+                        "spotlightShadingLayer": fixtureItem.sharedShadingLayer,
+                        "frameTarget": frameTarget
+                    });
+                    continue
+                }
+
                 for (iHead = 0; iHead < fixtureItem.headsNumber; iHead++)
                 {
                     headEntity = fixtureItem.getHead(iHead)
                     if (!headEntity)
                         continue
 
-                    component.createObject(frameGraph.myCameraSelector,
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector, { "fixtureItem": headEntity })
+                    component.createObject(gate,
                     {
                         "gBuffer": gBufferTarget,
                         // heads that don't cast shadows have no shadow map at all
@@ -277,19 +309,23 @@ Rectangle
                     if (!headEntity)
                         continue
 
-                    component.createObject(frameGraph.myCameraSelector,
+                    gate = gateComponent.createObject(frameGraph.myCameraSelector, { "fixtureItem": headEntity })
+
+                    component.createObject(gate,
                     {
                         "frontDepth": depthTarget,
                         "outputDepthLayer": headEntity.outputDepthLayer
                     });
 
-                    component2.createObject(frameGraph.myCameraSelector,
+                    component2.createObject(gate,
                     {
                         "fixtureItem": headEntity,
                         "frontDepth": depthTarget,
                         "gBuffer": gBufferTarget,
                         "spotlightScatteringLayer": headEntity.spotlightScatteringLayer,
-                        "shadowTex": fixtureItem.useShadows ? headEntity.depthTex : null,
+                        "shadowTex": fixtureItem.useShadows
+                                     ? (fixtureItem.sharedShadow ? fixtureItem.sharedShadow.depthTex : headEntity.depthTex)
+                                     : null,
                         "frameTarget": frameTarget,
                         "useShadows": fixtureItem.useShadows
                     });

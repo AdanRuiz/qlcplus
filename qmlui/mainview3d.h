@@ -525,6 +525,8 @@ protected:
 
 signals:
     void renderQualityChanged(RenderQuality renderQuality);
+    /** Something that casts a shadow has been moved, added or removed */
+    void shadowsInvalidated();
     void stageIndexChanged(int stageIndex);
     void ambientIntensityChanged(qreal ambientIntensity);
     void smokeAmountChanged(float smokeAmount);

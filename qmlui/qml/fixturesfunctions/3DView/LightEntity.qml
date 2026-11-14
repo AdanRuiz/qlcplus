@@ -88,7 +88,13 @@ Entity
     property matrix4x4 lightViewProjectionScaleAndOffsetMatrix:
         Math3D.getLightViewProjectionScaleOffsetMatrix(lightViewProjectionMatrix)
 
-    readonly property Layer spotlightShadingLayer: Layer { }
+    /* true when the fixture this emitter belongs to keeps one shadow map for
+       all its emitters: this one then has no map of its own, looks points up
+       with the matrix of that map and is shaded in the layer of the fixture */
+    property bool sharedShadow: false
+    property matrix4x4 shadowMatrix: lightViewProjectionScaleAndOffsetMatrix
+
+    property Layer spotlightShadingLayer: Layer { }
     readonly property Layer outputDepthLayer: Layer { }
     readonly property Layer spotlightScatteringLayer: Layer { }
 
@@ -106,7 +112,13 @@ Entity
        test and emit nothing at all. */
     property int shadowMapSize: 1024
 
-    property Texture2D depthTex:
+    property Texture2D depthTex: null
+    property RenderTarget shadowMap: null
+
+    Component
+    {
+        id: depthTexComponent
+
         Texture2D
         {
             width: shadowMapSize
@@ -121,18 +133,34 @@ Entity
                 y: WrapMode.ClampToEdge
             }
         }
+    }
 
-    property RenderTarget shadowMap:
+    Component
+    {
+        id: shadowMapComponent
+
         RenderTarget
         {
+            property Texture2D depthTexture
+
             attachments: [
                 RenderTargetOutput
                 {
                     attachmentPoint: RenderTargetOutput.Depth
-                    texture: depthTex
+                    texture: depthTexture
                 }
             ] // attachments
         }
+    }
+
+    // a map of its own only when the fixture does not provide one
+    Component.onCompleted:
+    {
+        if (sharedShadow)
+            return
+        depthTex = depthTexComponent.createObject(beamEntity)
+        shadowMap = shadowMapComponent.createObject(beamEntity, { "depthTexture": depthTex })
+    }
 
     function setupScattering(sceneEntity)
     {
