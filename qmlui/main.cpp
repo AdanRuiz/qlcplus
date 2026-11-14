@@ -26,6 +26,7 @@
 #include "app.h"
 #include "networkmanager.h"
 #include "qlcconfig.h"
+#include "systemmonitor.h"
 #include "qlcfile.h"
 
 QFile logFile;
@@ -103,6 +104,13 @@ int main(int argc, char *argv[])
     QCommandLineOption logOption(QStringList() << "g" << "log",
                                    "Log debug messages to a file.");
     parser.addOption(logOption);
+
+    QCommandLineOption sysmonOption(QStringList() << "sysmon",
+                                   "Log memory use, processor load and temperatures to a file "
+                                   "in the home folder, to diagnose a machine that hangs or powers off. "
+                                   "Also enabled by the environment variable VERTEXAV_SYSMON "
+                                   "(seconds between samples).");
+    parser.addOption(sysmonOption);
 
     QCommandLineOption threedSupportOption(QStringList() << "3" << "no3d",
                                       "Disable the 3D preview.");
@@ -192,6 +200,17 @@ int main(int argc, char *argv[])
                 }
         });
 
+    // health of the machine, logged while the application runs
+    QScopedPointer<SystemMonitor> sysMonitor;
+    int sysmonInterval = SystemMonitor::intervalFromEnvironment();
+    if (sysmonInterval == 0 && parser.isSet(sysmonOption))
+        sysmonInterval = SystemMonitor::DefaultInterval;
+    if (sysmonInterval > 0)
+    {
+        sysMonitor.reset(new SystemMonitor(SystemMonitor::defaultLogPath(), sysmonInterval));
+        sysMonitor->start();
+    }
+
     // language settings
     QString locale = parser.value(localeOption);
 
@@ -260,5 +279,10 @@ int main(int argc, char *argv[])
     if (parser.isSet(fullscreenOption))
         qlcplusApp.toggleFullscreen();
 
-    return app.exec();
+    int result = app.exec();
+
+    if (!sysMonitor.isNull())
+        sysMonitor->stop();
+
+    return result;
 }
