@@ -303,7 +303,8 @@ void MainView3D::resetItems()
 
 void MainView3D::resetCameraPosition()
 {
-    setCameraPosition(QVector3D(0.0, 3.0, 7.5));
+    // far enough to take in the whole stage and the beams above the truss
+    setCameraPosition(QVector3D(0.0, 4.55, 13.3));
     setCameraUpVector(QVector3D(0.0, 1.0, 0.0));
     setCameraViewCenter(QVector3D(0.0, 1.0, 0.0));
 }

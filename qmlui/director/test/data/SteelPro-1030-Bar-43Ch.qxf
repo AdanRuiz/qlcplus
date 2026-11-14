@@ -8,7 +8,7 @@
  </Creator>
  <Manufacturer>SteelPro</Manufacturer>
  <Model>1030 Bar 43Ch</Model>
- <Type>LED Bar (Pixels)</Type>
+ <Type>LED Bar (Beams)</Type>
  <Channel Name="Tilt" Default="127" Preset="PositionTilt"/>
  <Channel Name="Tilt Speed">
   <Group Byte="0">Speed</Group>
@@ -167,7 +167,7 @@
  <Physical>
   <Bulb Type="LED" Lumens="0" ColourTemperature="0"/>
   <Dimensions Weight="0" Width="1000" Height="120" Depth="120"/>
-  <Lens Name="Other" DegreesMin="0" DegreesMax="0"/>
+  <Lens Name="Other" DegreesMin="5" DegreesMax="5"/>
   <Focus Type="Head" PanMax="0" TiltMax="180"/>
   <Layout Width="10" Height="1"/>
   <Technical PowerConsumption="0" DmxConnector="3-pin"/>
