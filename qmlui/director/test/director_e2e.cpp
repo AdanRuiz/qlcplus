@@ -188,8 +188,9 @@ static quint32 novaScene(Doc *doc, const QList<quint32> &novas, const QString &n
 static void addNovaShow(Doc *doc, DirectorManager *director, const QList<quint32> &novas)
 {
     // 128 - 191 turns from fast to slow: the middle is a steady spin
-    quint32 spin = novaScene(doc, novas, "Novas - Spin and laser",
-                             QList<NovaValue>() << NovaValue("Head rotation", 160) << NovaValue("Green laser", 255));
+    quint32 spin = novaScene(doc, novas, "Novas - Spin", QList<NovaValue>() << NovaValue("Head rotation", 160));
+    // On its own, so that the laser override of the Director can switch it
+    quint32 laser = novaScene(doc, novas, "Novas - Laser", QList<NovaValue>() << NovaValue("Green laser", 255));
 
     // The fixture does the flashing: the strobe channel only sets how fast
     quint32 strobe = novaScene(doc, novas, "Novas - Yellow strobe",
@@ -223,7 +224,9 @@ static void addNovaShow(Doc *doc, DirectorManager *director, const QList<quint32
     look.removeAll(Function::invalidId());
 
     CHECK(director->addLook(DirectorEngine::Movement, look) > 0, "Nova arc sweep is one more movement");
-    CHECK(director->addCompanion(DirectorEngine::Movement, spin) > 0, "Nova spin and laser go along with the movement");
+    CHECK(director->addCompanion(DirectorEngine::Movement, spin) > 0, "Nova spin goes along with the movement");
+    CHECK(director->addCompanion(DirectorEngine::Movement, laser) > 0, "Nova laser goes along with the movement");
+    CHECK(director->hasLaser(), "the Director knows the rig has a laser");
     CHECK(director->addCompanion(DirectorEngine::Rhythm, strobe,
                                  QStringList() << "chorus" << "build" << "drop") > 0,
           "Nova yellow strobe goes along with the rhythm of the loud sections");
@@ -503,8 +506,24 @@ int main(int argc, char *argv[])
         CHECK(layers.at(DirectorEngine::Movement).toMap().value("count").toInt() >= 1, "Movement layer is running");
         if (novas.isEmpty() == false)
         {
-            CHECK(layers.at(DirectorEngine::Movement).toMap().value("functions").toString().contains("Spin and laser"),
+            const QString movement = layers.at(DirectorEngine::Movement).toMap().value("functions").toString();
+            CHECK(movement.contains("Novas - Spin") && movement.contains("Novas - Laser"),
                   "the Novas spin with the laser on while there is movement");
+
+            Function *laserScene = nullptr;
+            foreach (Function *f, doc->functions())
+            {
+                if (f->name() == "Novas - Laser")
+                    laserScene = f;
+            }
+            CHECK(laserScene != nullptr && laserScene->isRunning(), "the laser is running in the drop");
+            director->setLaserMode("off");
+            CHECK(director->activeOverrides() == 1, "switching the laser off counts as an override");
+            QTimer::singleShot(400, &qapp, [&qapp, director, laserScene]()
+            {
+                CHECK(laserScene != nullptr && laserScene->isRunning() == false, "the laser override switches the laser off");
+                director->setLaserMode("");
+            });
             CHECK(layers.at(DirectorEngine::Rhythm).toMap().value("functions").toString().contains("Yellow strobe"),
                   "the Novas strobe their yellow LEDs in the drop");
         }

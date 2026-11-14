@@ -272,6 +272,36 @@ Rectangle
             }
         }
 
+        // ── Laser ────────────────────────────────────────────────────────────
+        OverrideBox
+        {
+            title: qsTr("Laser overrides")
+            visible: director ? director.hasLaser : false
+
+            DirectorPanel.PanelButton
+            {
+                label: qsTr("Auto")
+                active: director ? director.laserMode === "" : false
+                onClicked: director.setLaserMode("")
+            }
+
+            DirectorPanel.PanelButton
+            {
+                label: qsTr("Laser off")
+                active: director ? director.laserMode === "off" : false
+                activeColor: "#A03030"
+                onClicked: director.setLaserMode("off")
+            }
+
+            DirectorPanel.PanelButton
+            {
+                label: qsTr("Laser on")
+                active: director ? director.laserMode === "on" : false
+                activeColor: "#2E9E48"
+                onClicked: director.setLaserMode("on")
+            }
+        }
+
         // ── Live ─────────────────────────────────────────────────────────────
         OverrideBox
         {

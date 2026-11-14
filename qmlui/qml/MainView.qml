@@ -43,9 +43,9 @@ Rectangle
 
     property bool directorVisible: false
     function toggleDirector() { mainView.directorVisible = !mainView.directorVisible }
-    /* Opened from the Director panel, and closed with it */
+    /* Opened from the Director panel. It stays when that panel is closed:
+       the overrides are what the operator keeps at hand during a show. */
     property bool directorOverridesVisible: false
-    onDirectorVisibleChanged: if (directorVisible === false) directorOverridesVisible = false
 
     /* Move a context to a window of its own, from inside the context */
     function detachContext(ctx)
@@ -634,11 +634,11 @@ Rectangle
     Loader
     {
         id: directorOverridesOverlay
-        // to the left of the Director panel
-        x: Math.max(10, directorOverlay.x - width - 10)
-        y: directorOverlay.y
+        // to the left of the Director panel, or in its place when it is closed
+        x: Math.max(10, (directorOverlay.active ? directorOverlay.x : parent.width) - width - 10)
+        y: (mainToolbar.visible ? mainToolbar.height : 0) + 10
         z: 90
-        active: mainView.directorVisible && mainView.directorOverridesVisible
+        active: mainView.directorOverridesVisible
         source: "qrc:/DirectorOverridesPanel.qml"
         onLoaded: if (item) item.closeRequested.connect(function() { mainView.directorOverridesVisible = false })
     }

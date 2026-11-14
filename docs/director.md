@@ -66,7 +66,8 @@ Las barras llevan lo que el Director da a cualquier barra motorizada. Los Nova l
 
 | Función | Qué hace | Cuándo corre |
 | --- | --- | --- |
-| Novas - Spin and laser | El cabezal gira de forma continua (canal 3 en 160) y el láser verde queda encendido | Siempre que hay movimiento |
+| Novas - Spin | El cabezal gira de forma continua (canal 3 en 160) | Siempre que hay movimiento |
+| Novas - Laser | El láser verde queda encendido (canal 11 en 255). Va en su propia escena para que el override de láser pueda apagarlo o encenderlo | Siempre que hay movimiento |
 | Novas - Yellow strobe | Los dos LED amarillos del cabezal parpadean por su cuenta: luz dorada (canal 12) a tope y estrobo (canal 6) en 150 | Chorus, build y drop |
 | Novas - Arc sweep | Barrido de unos 80° de pan en 5 segundos, con el tilt más alto al pasar por el centro | Un look más de la capa Movement |
 
@@ -80,6 +81,12 @@ Un modelo así puede tener su propio elemento 3D. La vista 3D lo busca por nombr
 
 El del Nova está en `qmlui/qml/fixturesfunctions/3DView/models/SteelProNova.qml`: base, yugo en L y un cabezal octogonal que gira según el canal 3. Sus ocho caras alternan cuatro haces RGBW, con el color y el dimmer, y cuatro LED amarillos de estrobo, que siguen a la luz dorada (canal 12) y parpadean con el canal 6 iluminando el escenario entero. Por el frente sale un abanico de 18 rayos de láser verde. El estrobo del Nova no corta los haces: es de esos cuatro LED.
 
+### Canales de efecto al terminar un look
+
+Un canal de efecto (un láser, el giro de un cabezal, un estrobo propio) conserva el último valor que recibió: detener la escena que lo encendió no lo apaga. Cuando el Director deja de usar una escena, pone en cero los canales de efecto que esa escena había subido y que nada de lo que corre ahora necesita. Lo hace con una escena temporal «Director - Release» que dura un instante y se borra sola.
+
+Un láser se reconoce por el nombre del canal (que contenga «laser»), porque QLC+ no tiene un tipo de canal para él. Una función cuenta como «de láser» si es una escena que solo toca canales de láser y sube alguno por encima de cero.
+
 ## Colores
 
 El Director crea tres paletas de color: «Director - Primary», «Director - Secondary» y «Director - Accent». Los tres primeros colores que envía VertexAV se escriben en ellas al empezar el compás, y la capa Base se reinicia para tomarlos. Un color negro se interpreta como «sin usar» y no cambia la paleta.
@@ -89,7 +96,7 @@ El Director crea tres paletas de color: «Director - Primary», «Director - Sec
 - **AUTO / OFF**: enciende o apaga el Director. Al apagarlo se detienen solo las funciones que él arrancó.
 - **Music**: BPM, tiempo del compás, sección, intensidad, energía, paleta recibida y permiso de strobe. Sección e intensidad se muestran en ámbar cuando están forzadas.
 - **Layers**: qué corre en cada capa. «Pin» deja la capa como está aunque cambie la música. «Off» la apaga.
-- **Overrides**: el icono de los deslizadores de la cabecera abre el panel «Director Overrides», y se pone ámbar mientras haya algo forzado. El panel tiene una caja por tipo: sección, intensidad, color y controles en vivo («Hold» para congelar todo, «Next look» para pasar al siguiente candidato, «Blackout» y «Strobe» mientras se mantienen pulsados, y bloquear los strobes). El color forzado sustituye al primario y al secundario que mande la música; el botón del color en vigor lleva una paloma, y un segundo clic lo suelta. «Release all» devuelve todo a la música.
+- **Overrides**: el icono de los deslizadores de la cabecera abre el panel «Director Overrides», y se pone ámbar mientras haya algo forzado. El panel tiene una caja por tipo: sección, intensidad, color y controles en vivo («Hold» para congelar todo, «Next look» para pasar al siguiente candidato, «Blackout» y «Strobe» mientras se mantienen pulsados, y bloquear los strobes). El color forzado sustituye al primario y al secundario que mande la música; el botón del color en vigor lleva una paloma, y un segundo clic lo suelta. Si el proyecto tiene funciones que solo manejan un láser, aparece la caja «Laser overrides»: «Auto» deja que decidan las reglas, «Laser off» lo apaga al instante y lo mantiene apagado, y «Laser on» lo mantiene encendido aunque la regla en curso no lo use. «Release all» devuelve todo a la música. El panel de overrides sigue abierto aunque se cierre el del Director.
 - **Demo**: una canción sintética en bucle (intro, verse, build, drop, breakdown, build, drop, outro). Se puede cambiar el BPM y saltar a una sección, que entra en el siguiente compás.
 
 ## Qué se guarda en el proyecto

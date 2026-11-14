@@ -478,7 +478,180 @@ void DirectorManager::setStrobeForced(bool forced)
 
 int DirectorManager::activeOverrides() const
 {
-    return m_engine.activeOverrides() + (m_forcedColor.isValid() ? 1 : 0);
+    return m_engine.activeOverrides() + (m_forcedColor.isValid() ? 1 : 0) + (m_laserMode.isEmpty() ? 0 : 1);
+}
+
+QString DirectorManager::laserMode() const
+{
+    return m_laserMode;
+}
+
+bool DirectorManager::isLaserFunction(quint32 function) const
+{
+    Scene *scene = qobject_cast<Scene *>(m_doc->function(function));
+    if (scene == nullptr)
+        return false;
+
+    const QList<SceneValue> values = scene->values();
+    bool lit = false;
+
+    foreach (const SceneValue &sv, values)
+    {
+        Fixture *fxi = m_doc->fixture(sv.fxi);
+        const QLCChannel *channel = fxi != nullptr ? fxi->channel(sv.channel) : nullptr;
+        if (channel == nullptr || channel->name().contains("laser", Qt::CaseInsensitive) == false)
+            return false;
+        if (sv.value > 0)
+            lit = true;
+    }
+    // a Scene that only brings lasers down is not one that lights them
+    return lit;
+}
+
+/** Effect channels that the Scene $function sets above zero */
+static void effectChannels(Doc *doc, quint32 function, QSet<QPair<quint32, quint32> > &channels)
+{
+    Scene *scene = qobject_cast<Scene *>(doc->function(function));
+    if (scene == nullptr)
+        return;
+
+    foreach (const SceneValue &sv, scene->values())
+    {
+        if (sv.value == 0)
+            continue;
+        Fixture *fxi = doc->fixture(sv.fxi);
+        const QLCChannel *channel = fxi != nullptr ? fxi->channel(sv.channel) : nullptr;
+        if (channel != nullptr && channel->group() == QLCChannel::Effect)
+            channels.insert(QPair<quint32, quint32>(sv.fxi, sv.channel));
+    }
+}
+
+void DirectorManager::releaseEffects(const QList<quint32> &stopped)
+{
+    QSet<QPair<quint32, quint32> > release, wanted;
+
+    foreach (quint32 fid, stopped)
+        effectChannels(m_doc, fid, release);
+    if (release.isEmpty())
+        return;
+
+    if (m_enabled)
+    {
+        for (int l = 0; l < DirectorEngine::LayerCount; l++)
+        {
+            foreach (quint32 fid, m_engine.layerBundle(l))
+            {
+                if (m_laserMode == "off" && isLaserFunction(fid))
+                    continue;
+                effectChannels(m_doc, fid, wanted);
+            }
+        }
+        if (m_laserMode == "on")
+        {
+            foreach (quint32 fid, laserFunctions())
+                effectChannels(m_doc, fid, wanted);
+        }
+    }
+
+    release.subtract(wanted);
+    if (release.isEmpty())
+        return;
+
+    // A Scene of zeros, run for a moment and thrown away: what it writes stays
+    Scene *scene = new Scene(m_doc);
+    scene->setName(tr("Director - Release"));
+    scene->setPath(DIRECTOR_FOLDER);
+    for (auto it = release.constBegin(); it != release.constEnd(); ++it)
+    {
+        scene->addFixture(it->first);
+        scene->setValue(it->first, it->second, 0);
+    }
+    if (m_doc->addFunction(scene) == false)
+    {
+        delete scene;
+        return;
+    }
+
+    const quint32 id = scene->id();
+    scene->start(m_doc->masterTimer(), FunctionParent::master());
+    QTimer::singleShot(300, this, [this, id]()
+    {
+        Function *f = m_doc->function(id);
+        if (f == nullptr)
+            return;
+        f->stopAndWait();
+        m_doc->deleteFunction(id);
+    });
+}
+
+QList<quint32> DirectorManager::laserFunctions() const
+{
+    QList<quint32> list;
+    foreach (Function *f, m_doc->functions())
+    {
+        if (f != nullptr && isLaserFunction(f->id()))
+            list << f->id();
+    }
+    return list;
+}
+
+bool DirectorManager::hasLaser() const
+{
+    return laserFunctions().isEmpty() == false;
+}
+
+void DirectorManager::setLaserMode(const QString &mode)
+{
+    const QString value = (mode == "on" || mode == "off") ? mode : QString();
+    if (value == m_laserMode)
+        return;
+
+    m_laserMode = value;
+    log(QString("laser %1").arg(value.isEmpty() ? QString("back to the rules") : value));
+    applyLaserMode();
+    emit overridesChanged();
+}
+
+void DirectorManager::applyLaserMode()
+{
+    if (m_enabled == false)
+        return;
+
+    QList<quint32> released;
+
+    foreach (quint32 fid, laserFunctions())
+    {
+        Function *f = m_doc->function(fid);
+        if (f == nullptr)
+            continue;
+
+        bool wanted = (m_laserMode == "on");
+        if (m_laserMode.isEmpty())
+        {
+            for (int l = 0; l < DirectorEngine::LayerCount && wanted == false; l++)
+                wanted = m_engine.layerBundle(l).contains(fid);
+        }
+
+        if (wanted && f->isRunning() == false)
+        {
+            f->start(m_doc->masterTimer(), FunctionParent::master());
+            if (m_started.contains(fid) == false)
+                m_started.append(fid);
+        }
+        else if (wanted == false && f->isRunning())
+        {
+            // taking a laser away must be immediate
+            f->stop(FunctionParent::master());
+            released << fid;
+        }
+        else if (wanted == false)
+        {
+            // already stopped, but its channels may still hold their value
+            released << fid;
+        }
+    }
+
+    releaseEffects(released);
 }
 
 QString DirectorManager::forcedColor() const
@@ -546,6 +719,11 @@ void DirectorManager::releaseAll()
         m_forcedColor = QColor();
         m_paletteDirty = true;
         evaluateNow();
+    }
+    if (m_laserMode.isEmpty() == false)
+    {
+        m_laserMode.clear();
+        applyLaserMode();
     }
     emit overridesChanged();
     emit musicChanged();
@@ -730,6 +908,7 @@ void DirectorManager::slotWatchdog()
 void DirectorManager::execute(const QList<DirectorEngine::Action> &actions)
 {
     bool stopped = false;
+    QList<quint32> released;
 
     foreach (const DirectorEngine::Action &action, actions)
     {
@@ -738,11 +917,17 @@ void DirectorManager::execute(const QList<DirectorEngine::Action> &actions)
         Function *f = m_doc->function(action.function);
         if (f == nullptr)
             continue;
+        // A laser the operator forced on outlives the look that started it
+        if (m_enabled && m_laserMode == "on" && isLaserFunction(action.function))
+            continue;
         // Not conditional on isRunning(): a Function started a moment ago
         // is still waiting for its first timer tick
         f->stop(FunctionParent::master());
         stopped = true;
+        released << action.function;
     }
+
+    releaseEffects(released);
 
     foreach (const DirectorEngine::Action &action, actions)
     {
@@ -782,6 +967,10 @@ void DirectorManager::slotStartPending()
         if (f == nullptr || f->isRunning())
             continue;
 
+        // The operator switched the lasers off
+        if (m_laserMode == "off" && isLaserFunction(fid))
+            continue;
+
         f->start(m_doc->masterTimer(), FunctionParent::master());
         if (m_started.contains(fid) == false)
             m_started.append(fid);
@@ -801,6 +990,9 @@ void DirectorManager::stopStragglers()
         {
             for (int l = 0; l < DirectorEngine::LayerCount && wanted == false; l++)
                 wanted = m_engine.layerBundle(l).contains(fid);
+            // forced on, a laser is wanted whatever the look
+            if (m_laserMode == "on" && isLaserFunction(fid))
+                wanted = true;
         }
         if (wanted)
             continue;

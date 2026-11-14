@@ -46,6 +46,11 @@ Based on the QLC+ 5.3.0 engine.
   intensity, colour and live controls, each in a box of its own.
 - Colour override: the operator paints the show in one colour, whatever the
   music sends, until it is released.
+- Laser override: lasers follow the rules, or are switched off, or kept on,
+  from the Director Overrides panel. That panel stays open when the
+  Director panel is closed.
+- When the Director stops using a laser, a spinning head or a strobe, it
+  brings their channels back to zero: stopping the Function left them on.
 - Rock stage as the default stage of the 3D view.
 - SteelPro Nova fixture definition.
 - Own name, icon and logo. The QLC+ engine is credited in the About box,

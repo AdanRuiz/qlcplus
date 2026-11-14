@@ -80,6 +80,8 @@ class DirectorManager final : public QObject
     Q_PROPERTY(bool blackout READ blackout WRITE setBlackout NOTIFY overridesChanged)
     Q_PROPERTY(bool strobeForced READ strobeForced WRITE setStrobeForced NOTIFY overridesChanged)
     Q_PROPERTY(QString forcedColor READ forcedColor NOTIFY overridesChanged)
+    Q_PROPERTY(QString laserMode READ laserMode NOTIFY overridesChanged)
+    Q_PROPERTY(bool hasLaser READ hasLaser NOTIFY rulesChanged)
     Q_PROPERTY(int activeOverrides READ activeOverrides NOTIFY overridesChanged)
 
     Q_PROPERTY(bool demoRunning READ demoRunning NOTIFY demoChanged)
@@ -146,6 +148,14 @@ public:
     /** Force a section/intensity. An empty string gives control back */
     Q_INVOKABLE void forceSection(const QString &section);
     Q_INVOKABLE void forceIntensity(const QString &intensity);
+
+    /** What the operator decided about the lasers: "" = the rules decide,
+     *  "off" = never, "on" = always while the Director is on */
+    QString laserMode() const;
+    Q_INVOKABLE void setLaserMode(const QString &mode);
+
+    /** True when the project has Functions that only drive a laser */
+    bool hasLaser() const;
 
     /** Paint the show in $color ("#rrggbb"): it replaces the primary and the
      *  secondary colour, whatever the music sends. An empty string gives the
@@ -251,6 +261,22 @@ private:
      *  not pan (motorised bars). Returns invalidId() when there are none. */
     quint32 makeTiltSweep(const QString &groupName, quint32 groupId);
 
+    /** True when $function is a Scene that drives laser channels and nothing
+     *  else. Those are the Functions the laser override switches. A laser is
+     *  recognised by the name of its channel: QLC+ has no channel type for it. */
+    bool isLaserFunction(quint32 function) const;
+    QList<quint32> laserFunctions() const;
+    /** Start or stop the laser Functions to match the laser override */
+    void applyLaserMode();
+
+    /** Bring back to zero the effect channels that the Scenes in $stopped
+     *  had raised and nothing running now wants.
+     *
+     *  Stopping a Scene is not enough for them: an effect channel keeps the
+     *  last value it was given, so a laser, a spinning head or a strobe
+     *  would go on after the look that asked for them has ended. */
+    void releaseEffects(const QList<quint32> &stopped);
+
     /** Rules addCompanion() and addLook() apply to, as indexes */
     QList<int> rulesFor(const QStringList &sections) const;
     /** Replace the rules of a Director that may be running */
@@ -286,6 +312,8 @@ private:
     quint32 m_slotPalette[PaletteSlots];
     /* Colour forced by the operator. Invalid = the music decides */
     QColor m_forcedColor;
+    /* Laser override: "", "off" or "on" */
+    QString m_laserMode;
     bool m_paletteDirty;
 
     /* Functions created by the Director, deleted when rules are rebuilt */
