@@ -304,10 +304,16 @@ void App::startup()
     }
     else
     {
-        QScreen *currScreen = screen();
-        rect.moveTopLeft(currScreen->geometry().topLeft());
+        // No size remembered yet: a window that fits a Full HD laptop, whose
+        // screen is 1280 x 720 or 1536 x 864 once the system scaling applies,
+        // instead of taking the whole screen
+        QRect available = screen()->availableGeometry();
+        QSize size(qMin(1280, int(available.width() * 0.9)), qMin(700, int(available.height() * 0.88)));
+        rect = QRect(QPoint(0, 0), size);
+        rect.moveCenter(available.center());
+        restoreWindowGeometry = true;
         setGeometry(rect);
-        showMaximized();
+        show();
     }
 #endif
 
